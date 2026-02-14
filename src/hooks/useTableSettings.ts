@@ -20,9 +20,13 @@ export const DEFAULT_COLUMNS: Record<string, ColumnConfig[]> = {
   companies: [
     { key: "name", label: "Name", visible: true, order: 0 },
     { key: "type", label: "Type", visible: true, order: 1 },
-    { key: "address", label: "Address", visible: true, order: 2 },
-    { key: "registration_no", label: "Registration No.", visible: true, order: 3 },
-    { key: "coordinates", label: "Coordinates", visible: true, order: 4 },
+    { key: "code", label: "Code", visible: true, order: 2 },
+    { key: "atoll", label: "Atoll", visible: true, order: 3 },
+    { key: "contract_count", label: "No. of Contracts", visible: true, order: 4 },
+    { key: "linked_resorts", label: "Linked Resorts", visible: true, order: 5 },
+    { key: "address", label: "Address", visible: true, order: 6 },
+    { key: "registration_no", label: "Registration No.", visible: true, order: 7 },
+    { key: "coordinates", label: "Coordinates", visible: false, order: 8 },
   ],
   contracts: [
     { key: "contract_code", label: "Contract Code", visible: true, order: 0 },
@@ -32,11 +36,6 @@ export const DEFAULT_COLUMNS: Record<string, ColumnConfig[]> = {
     { key: "start_date", label: "Start Date", visible: true, order: 4 },
     { key: "end_date", label: "End Date", visible: true, order: 5 },
     { key: "status", label: "Status", visible: true, order: 6 },
-  ],
-  destinations: [
-    { key: "name", label: "Name", visible: true, order: 0 },
-    { key: "code", label: "Code", visible: true, order: 1 },
-    { key: "coordinates", label: "Coordinates", visible: true, order: 2 },
   ],
 };
 

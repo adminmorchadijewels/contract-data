@@ -1,4 +1,4 @@
-import { Building2, FileText, MapPin, Settings, Plane, Sun, Moon, Download, Upload } from "lucide-react";
+import { Building2, FileText, Settings, Plane, Sun, Moon, Download, Upload } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { exportToExcel, importFromExcel } from "@/lib/excelDataService";
@@ -20,7 +20,6 @@ import {
 const navItems = [
   { title: "Resort Data", url: "/", icon: Building2 },
   { title: "Contracts", url: "/contracts", icon: FileText },
-  { title: "Destinations", url: "/destinations", icon: MapPin },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 export type TableName =
   | "companies"
   | "contracts"
-  | "destinations"
+  | "atolls"
   | "pricing_standard"
   | "pricing_special"
   | "contract_baggage"
@@ -23,7 +23,7 @@ export type TableName =
 const ALL_TABLES: TableName[] = [
   "companies",
   "contracts",
-  "destinations",
+  "atolls",
   "pricing_standard",
   "pricing_special",
   "contract_baggage",
@@ -136,11 +136,9 @@ export function exportToExcel(): void {
   for (const table of ALL_TABLES) {
     const data = getTable(table);
     if (data.length === 0) {
-      // Create sheet with just headers (empty)
       const ws = XLSX.utils.json_to_sheet([]);
       XLSX.utils.book_append_sheet(wb, ws, table);
     } else {
-      // Handle arrays in data by converting to JSON strings
       const flatData = data.map((row: any) => {
         const flat: Record<string, unknown> = {};
         for (const [key, val] of Object.entries(row)) {
@@ -171,7 +169,6 @@ export function importFromExcel(file: File): Promise<void> {
           const ws = wb.Sheets[sheetName];
           const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws);
 
-          // Parse JSON-stringified arrays back
           const parsed = rows.map((row) => {
             const out: Record<string, unknown> = {};
             for (const [key, val] of Object.entries(row)) {
@@ -202,45 +199,69 @@ export function importFromExcel(file: File): Promise<void> {
 
 // ─── Seed Data ──────────────────────────────────────────────────────
 
-const SEED_DESTINATIONS = [
-  { name: "Velana International Airport", code: "MLE", coordinates: "4.1918, 73.5290" },
-  { name: "Hanimaadhoo Airport", code: "HAQ", coordinates: "6.7442, 73.1705" },
-  { name: "Kadhdhoo Airport", code: "KDO", coordinates: "1.8592, 73.5219" },
-  { name: "Gan International Airport", code: "GAN", coordinates: "-0.6933, 73.1556" },
-  { name: "Dhaalu Airport", code: "DDD", coordinates: "2.6681, 72.8878" },
-  { name: "Ifuru Airport", code: "IFU", coordinates: "5.7083, 73.0250" },
-  { name: "Maafaru Airport", code: "NMF", coordinates: "5.8183, 73.4700" },
-  { name: "Soneva Fushi", code: "SVF", coordinates: "5.1100, 73.0700" },
-  { name: "One&Only Reethi Rah", code: "ORR", coordinates: "4.3900, 73.3600" },
-  { name: "Waldorf Astoria Ithaafushi", code: "WAI", coordinates: "4.1500, 73.4200" },
-  { name: "St. Regis Vommuli", code: "SRV", coordinates: "2.8200, 73.3900" },
-  { name: "Patina Maldives", code: "PTM", coordinates: "3.9100, 73.4800" },
-  { name: "COMO Cocoa Island", code: "CCI", coordinates: "3.9600, 73.3700" },
-  { name: "Cheval Blanc Randheli", code: "CBR", coordinates: "5.7200, 73.0100" },
-  { name: "Four Seasons Landaa Giraavaru", code: "FSL", coordinates: "5.2900, 73.0700" },
+const SEED_ATOLLS = [
+  { name: "North Malé Atoll" },
+  { name: "South Malé Atoll" },
+  { name: "Baa Atoll" },
+  { name: "Noonu Atoll" },
+  { name: "Dhaalu Atoll" },
+  { name: "Raa Atoll" },
+  { name: "Lhaviyani Atoll" },
+  { name: "Ari Atoll" },
+  { name: "Meemu Atoll" },
+  { name: "Laamu Atoll" },
 ];
 
-const SEED_COMPANIES = [
-  { name: "Marriott International", type: "Group", address: "Bethesda, Maryland, USA", registration_no: "MI-2024-001", coordinates: "38.9807, -77.0962" },
-  { name: "Hilton Hotels Corporation", type: "Group", address: "McLean, Virginia, USA", registration_no: "HH-2024-002", coordinates: "38.9339, -77.1773" },
-  { name: "Minor International", type: "Group", address: "Bangkok, Thailand", registration_no: "MN-2024-003", coordinates: "13.7563, 100.5018" },
-  { name: "Soneva Group", type: "Group", address: "Bangkok, Thailand", registration_no: "SG-2024-004", coordinates: "13.7563, 100.5018" },
-  { name: "Waldorf Astoria Maldives", type: "Resort", address: "Ithaafushi Island, Maldives", registration_no: "WA-2024-R01", coordinates: "4.1500, 73.4200" },
-  { name: "St. Regis Maldives Vommuli", type: "Resort", address: "Dhaalu Atoll, Maldives", registration_no: "SR-2024-R02", coordinates: "2.8200, 73.3900" },
-  { name: "Soneva Fushi", type: "Resort", address: "Baa Atoll, Maldives", registration_no: "SF-2024-R03", coordinates: "5.1100, 73.0700" },
-  { name: "Four Seasons Landaa Giraavaru", type: "Resort", address: "Baa Atoll, Maldives", registration_no: "FS-2024-R04", coordinates: "5.2900, 73.0700" },
-  { name: "Patina Maldives Fari Islands", type: "Resort", address: "North Malé Atoll, Maldives", registration_no: "PM-2024-R05", coordinates: "3.9100, 73.4800" },
-  { name: "Cheval Blanc Randheli", type: "Resort", address: "Noonu Atoll, Maldives", registration_no: "CB-2024-R06", coordinates: "5.7200, 73.0100" },
+const SEED_GROUPS = [
+  { name: "Marriott International", type: "Group", code: "MAR", atoll: "", address: "Bethesda, Maryland, USA", registration_no: "MI-2024-001", coordinates: "38.9807, -77.0962" },
+  { name: "Soneva Group", type: "Group", code: "SON", atoll: "", address: "Bangkok, Thailand", registration_no: "SG-2024-002", coordinates: "13.7563, 100.5018" },
+  { name: "LVMH Hospitality", type: "Group", code: "LVMH", atoll: "", address: "Paris, France", registration_no: "LV-2024-003", coordinates: "48.8566, 2.3522" },
+];
+
+const SEED_RESORTS = [
+  { name: "Soneva Fushi", type: "Resort", code: "SF", atoll: "Baa Atoll", address: "Kunfunadhoo Island, Baa Atoll, Maldives", registration_no: "SF-2024-R01", coordinates: "5.1100, 73.0700" },
+  { name: "Waldorf Astoria Maldives Ithaafushi", type: "Resort", code: "WAI", atoll: "South Malé Atoll", address: "Ithaafushi Island, South Malé Atoll, Maldives", registration_no: "WA-2024-R02", coordinates: "4.1500, 73.4200" },
+  { name: "St. Regis Maldives Vommuli", type: "Resort", code: "SRV", atoll: "Dhaalu Atoll", address: "Vommuli Island, Dhaalu Atoll, Maldives", registration_no: "SR-2024-R03", coordinates: "2.8200, 73.3900" },
+  { name: "Patina Maldives Fari Islands", type: "Resort", code: "PMF", atoll: "North Malé Atoll", address: "Fari Islands, North Malé Atoll, Maldives", registration_no: "PM-2024-R04", coordinates: "4.3100, 73.4800" },
+  { name: "Cheval Blanc Randheli", type: "Resort", code: "CBR", atoll: "Noonu Atoll", address: "Randheli Island, Noonu Atoll, Maldives", registration_no: "CB-2024-R05", coordinates: "5.7200, 73.0100" },
 ];
 
 export function initializeData(): void {
   // Only seed if no data exists yet
-  if (localStorage.getItem(STORAGE_PREFIX + "destinations")) return;
+  if (localStorage.getItem(STORAGE_PREFIX + "companies")) return;
 
-  for (const dest of SEED_DESTINATIONS) {
-    insertRow("destinations", dest);
+  // Seed atolls
+  for (const atoll of SEED_ATOLLS) {
+    insertRow("atolls", atoll);
   }
-  for (const comp of SEED_COMPANIES) {
-    insertRow("companies", comp);
+
+  // Seed groups and capture IDs
+  const groupIds: Record<string, string> = {};
+  for (const group of SEED_GROUPS) {
+    const row = insertRow("companies", group) as any;
+    groupIds[group.code] = row.id;
   }
+
+  // Seed resorts and capture IDs
+  const resortIds: Record<string, string> = {};
+  for (const resort of SEED_RESORTS) {
+    const row = insertRow("companies", resort) as any;
+    resortIds[resort.code] = row.id;
+  }
+
+  // Seed contracts linking groups to resorts
+  const seedContracts = [
+    { contract_id: "CTR-001", contract_code: "MAR-WAI-2025", carrier_id: "TMA101", group_id: groupIds["MAR"], resort_id: resortIds["WAI"], sub_contract_id: "CTR-001-001", sub_contract_type: "Transfer", start_date: "2025-01-01", end_date: "2025-12-31", agreement_type: "Exclusive Seaplane (Day time)" },
+    { contract_id: "CTR-002", contract_code: "MAR-SRV-2025", carrier_id: "TMA101", group_id: groupIds["MAR"], resort_id: resortIds["SRV"], sub_contract_id: "CTR-002-001", sub_contract_type: "Transfer", start_date: "2025-03-01", end_date: "2026-02-28", agreement_type: "Exclusive Seaplane (Day time)" },
+    { contract_id: "CTR-003", contract_code: "SON-SF-2025", carrier_id: "TMA101", group_id: groupIds["SON"], resort_id: resortIds["SF"], sub_contract_id: "CTR-003-001", sub_contract_type: "Charter", start_date: "2025-06-01", end_date: "2026-05-31", agreement_type: "Charter Agreement" },
+    { contract_id: "CTR-004", contract_code: "LVMH-CBR-2025", carrier_id: "TMA101", group_id: groupIds["LVMH"], resort_id: resortIds["CBR"], sub_contract_id: "CTR-004-001", sub_contract_type: "Signed Charter", start_date: "2024-01-01", end_date: "2024-12-31", agreement_type: "Signed Charter Agreement" },
+    { contract_id: "CTR-005", contract_code: "MAR-PMF-2025", carrier_id: "TMA101", group_id: groupIds["MAR"], resort_id: resortIds["PMF"], sub_contract_id: "CTR-005-001", sub_contract_type: "Transfer", start_date: "2025-04-01", end_date: "2026-03-31", agreement_type: "Exclusive Seaplane (Day time)" },
+  ];
+
+  for (const contract of seedContracts) {
+    insertRow("contracts", contract);
+  }
+
+  // Clear old destinations if any
+  localStorage.removeItem(STORAGE_PREFIX + "destinations");
 }

@@ -3,6 +3,8 @@ import { z } from "zod";
 export const companySchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
   type: z.enum(["Group", "Resort"]),
+  code: z.string().max(20).optional().or(z.literal("")),
+  atoll: z.string().max(100).optional().or(z.literal("")),
   address: z.string().max(500).optional().or(z.literal("")),
   registration_no: z.string().max(100).optional().or(z.literal("")),
   coordinates: z.string().max(100).optional().or(z.literal("")),

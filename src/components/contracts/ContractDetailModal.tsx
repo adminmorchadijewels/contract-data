@@ -1,8 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import { useContractDetail } from "@/hooks/useContracts";
-import { format } from "date-fns";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { StandardPricingTab } from "./tabs/StandardPricingTab";
 import { SpecialPricingTab } from "./tabs/SpecialPricingTab";
@@ -12,6 +13,7 @@ import { NotesTab } from "./tabs/NotesTab";
 interface Props {
   contractId: string | null;
   onClose: () => void;
+  onEdit?: (contract: any) => void;
 }
 
 function getStatus(start: string, end: string) {
@@ -26,7 +28,7 @@ function getStatus(start: string, end: string) {
   return "Active";
 }
 
-export function ContractDetailModal({ contractId, onClose }: Props) {
+export function ContractDetailModal({ contractId, onClose, onEdit }: Props) {
   const { data: contract, isLoading } = useContractDetail(contractId);
 
   if (!contractId) return null;
@@ -45,12 +47,19 @@ export function ContractDetailModal({ contractId, onClose }: Props) {
                 <div>
                   <DialogTitle className="text-2xl">{contract.contract_code}</DialogTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {contract.resort?.name} • {contract.group?.name}
+                    {contract.resort?.name} &bull; {contract.group?.name}
                   </p>
                 </div>
-                <span className={`status-badge ${getStatus(contract.start_date, contract.end_date) === "Active" ? "status-active" : getStatus(contract.start_date, contract.end_date) === "Expiring" ? "status-expiring" : "status-expired"}`}>
-                  {getStatus(contract.start_date, contract.end_date)}
-                </span>
+                <div className="flex items-center gap-3">
+                  {onEdit && (
+                    <Button variant="outline" size="sm" onClick={() => onEdit(contract)}>
+                      <Pencil className="h-4 w-4 mr-2" /> Edit
+                    </Button>
+                  )}
+                  <span className={`status-badge ${getStatus(contract.start_date, contract.end_date) === "Active" ? "status-active" : getStatus(contract.start_date, contract.end_date) === "Expiring" ? "status-expiring" : "status-expired"}`}>
+                    {getStatus(contract.start_date, contract.end_date)}
+                  </span>
+                </div>
               </div>
             </DialogHeader>
 

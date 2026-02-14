@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { insertRow, updateRow, deleteRow } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
-import { useDestinations } from "@/hooks/useContracts";
+import { useCompanies } from "@/hooks/useCompanies";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -18,7 +18,8 @@ const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 interface Props { contract: any; }
 
 export function StandardPricingTab({ contract }: Props) {
-  const { data: destinations } = useDestinations();
+  const { data: companies } = useCompanies();
+  const resorts = companies?.filter((c) => c.type === "Resort") || [];
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
@@ -96,7 +97,7 @@ export function StandardPricingTab({ contract }: Props) {
     }
   };
 
-  const getDestName = (id: string) => destinations?.find((d: any) => d.id === id)?.name || "—";
+  const getDestName = (id: string) => resorts?.find((d: any) => d.id === id)?.name || "\u2014";
 
   return (
     <div className="mt-4 space-y-4">
@@ -161,14 +162,14 @@ export function StandardPricingTab({ contract }: Props) {
                 <Label>Point A</Label>
                 <Select value={formData.point_a_id} onValueChange={(v) => setFormData((p) => ({ ...p, point_a_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>{destinations?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
+                  <SelectContent>{resorts?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code || ""})</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Point B</Label>
                 <Select value={formData.point_b_id} onValueChange={(v) => setFormData((p) => ({ ...p, point_b_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>{destinations?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
+                  <SelectContent>{resorts?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code || ""})</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>

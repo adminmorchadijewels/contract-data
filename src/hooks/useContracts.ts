@@ -39,6 +39,7 @@ export function useContracts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
       toast({ title: "Contract created successfully" });
     },
     onError: (error: Error) => {
@@ -55,6 +56,7 @@ export function useContracts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
       toast({ title: "Contract updated successfully" });
     },
     onError: (error: Error) => {
@@ -86,6 +88,7 @@ export function useContracts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
       toast({ title: "Contract deleted successfully" });
     },
     onError: (error: Error) => {
@@ -130,17 +133,6 @@ export function useContractDetail(contractId: string | null) {
         contract_termination: subId ? selectWhere("contract_termination", "sub_contract_id", subId) : [],
         contract_notes: selectWhere("contract_notes", "contract_id", contractId!),
       };
-    },
-  });
-}
-
-export function useDestinations() {
-  return useQuery({
-    queryKey: ["destinations"],
-    queryFn: async () => {
-      return selectAll("destinations").sort((a: any, b: any) =>
-        (a.name || "").localeCompare(b.name || "")
-      );
     },
   });
 }

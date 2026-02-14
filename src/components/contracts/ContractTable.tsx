@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Plus, Eye, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Eye, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,16 +52,22 @@ export function ContractTable() {
     });
   }, [contracts, search, statusFilter, typeFilter]);
 
+  const handleEditFromModal = (contract: any) => {
+    setViewContractId(null);
+    setEditContract(contract);
+    setShowForm(true);
+  };
+
   const getCellValue = (contract: any, key: string) => {
     switch (key) {
       case "contract_code":
         return <span className="font-medium text-primary">{contract.contract_code}</span>;
       case "resort":
-        return contract.resort?.name || "—";
+        return contract.resort?.name || "\u2014";
       case "group":
-        return contract.group?.name || "—";
+        return contract.group?.name || "\u2014";
       case "sub_contract_type":
-        return <Badge variant="secondary">{contract.sub_contract_type || "—"}</Badge>;
+        return <Badge variant="secondary">{contract.sub_contract_type || "\u2014"}</Badge>;
       case "start_date":
         return format(new Date(contract.start_date), "dd MMM yyyy");
       case "end_date":
@@ -75,7 +81,7 @@ export function ContractTable() {
         );
       }
       default:
-        return contract[key] || "—";
+        return contract[key] || "\u2014";
     }
   };
 
@@ -118,7 +124,7 @@ export function ContractTable() {
               {columns.map((col) => (
                 <TableHead key={col.key} className="font-semibold">{col.label}</TableHead>
               ))}
-              <TableHead className="font-semibold w-28">Actions</TableHead>
+              <TableHead className="font-semibold w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -130,7 +136,7 @@ export function ContractTable() {
               <TableRow><TableCell colSpan={columns.length + 1} className="text-center py-12 text-muted-foreground">No contracts found.</TableCell></TableRow>
             ) : (
               filtered.map((contract) => (
-                <TableRow key={contract.id} className="data-table-row" onClick={() => setViewContractId(contract.id)}>
+                <TableRow key={contract.id} className="data-table-row cursor-pointer" onClick={() => setViewContractId(contract.id)}>
                   {columns.map((col) => (
                     <TableCell key={col.key} className="text-muted-foreground">
                       {getCellValue(contract, col.key)}
@@ -139,7 +145,6 @@ export function ContractTable() {
                   <TableCell>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(contract.id)}><Eye className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditContract(contract); setShowForm(true); }}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(contract)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </TableCell>
@@ -151,7 +156,7 @@ export function ContractTable() {
       </div>
 
       <ContractForm open={showForm} onClose={() => setShowForm(false)} contract={editContract} />
-      <ContractDetailModal contractId={viewContractId} onClose={() => setViewContractId(null)} />
+      <ContractDetailModal contractId={viewContractId} onClose={() => setViewContractId(null)} onEdit={handleEditFromModal} />
 
       <AlertDialog open={!!deleteContract} onOpenChange={() => setDeleteContract(null)}>
         <AlertDialogContent>

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { companySchema, CompanyFormData } from "@/lib/validations";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { selectAll } from "@/lib/excelDataService";
 
 interface CompanyFormProps {
   open: boolean;
@@ -20,9 +22,14 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
   const { createMutation, updateMutation } = useCompanies();
   const isEdit = !!company;
 
+  const { data: atolls } = useQuery({
+    queryKey: ["atolls"],
+    queryFn: () => selectAll("atolls").sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")),
+  });
+
   const form = useForm<CompanyFormData>({
     resolver: zodResolver(companySchema),
-    defaultValues: { name: "", type: "Resort", address: "", registration_no: "", coordinates: "" },
+    defaultValues: { name: "", type: "Resort", code: "", atoll: "", address: "", registration_no: "", coordinates: "" },
   });
 
   useEffect(() => {
@@ -30,20 +37,22 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
       form.reset({
         name: company.name,
         type: company.type,
+        code: company.code || "",
+        atoll: company.atoll || "",
         address: company.address || "",
         registration_no: company.registration_no || "",
         coordinates: company.coordinates || "",
       });
     } else {
-      form.reset({ name: "", type: "Resort", address: "", registration_no: "", coordinates: "" });
+      form.reset({ name: "", type: "Resort", code: "", atoll: "", address: "", registration_no: "", coordinates: "" });
     }
   }, [company, form]);
 
   const onSubmit = async (data: CompanyFormData) => {
     if (isEdit) {
-      await updateMutation.mutateAsync({ id: company.id, name: data.name, type: data.type, address: data.address, registration_no: data.registration_no, coordinates: data.coordinates });
+      await updateMutation.mutateAsync({ id: company.id, ...data });
     } else {
-      await createMutation.mutateAsync({ name: data.name, type: data.type, address: data.address, registration_no: data.registration_no, coordinates: data.coordinates });
+      await createMutation.mutateAsync(data);
     }
     onClose();
   };
@@ -56,26 +65,50 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField control={form.control} name="name" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name <span className="text-destructive">*</span></FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="type" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Type <span className="text-destructive">*</span></FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    <SelectItem value="Group">Group</SelectItem>
-                    <SelectItem value="Resort">Resort</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name <span className="text-destructive">*</span></FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="type" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type <span className="text-destructive">*</span></FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="Group">Group</SelectItem>
+                      <SelectItem value="Resort">Resort</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="code" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Code</FormLabel>
+                  <FormControl><Input {...field} placeholder="e.g. SF, WAI" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="atoll" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Atoll</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select atoll" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {atolls?.map((a: any) => (
+                        <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
             <FormField control={form.control} name="address" render={({ field }) => (
               <FormItem>
                 <FormLabel>Address</FormLabel>
@@ -83,20 +116,22 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField control={form.control} name="registration_no" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Registration No.</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="coordinates" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Coordinates</FormLabel>
-                <FormControl><Input {...field} placeholder="Lat, Long" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="registration_no" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Registration No.</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="coordinates" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Coordinates</FormLabel>
+                  <FormControl><Input {...field} placeholder="Lat, Long" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
               <Button type="submit" className="btn-gradient-primary" disabled={createMutation.isPending || updateMutation.isPending}>
