@@ -6,10 +6,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { supabase } from "@/integrations/supabase/client";
+import { insertRow, updateRow, deleteRow, type TableName } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -47,20 +46,18 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
   const handleSave = async () => {
     const payload: Record<string, any> = { sub_contract_id: subContractId };
     fields.forEach((f) => { payload[f.key] = formData[f.key] || null; });
-    let error;
     if (editRow) {
-      ({ error } = await supabase.from(tableName).update(payload as any).eq("id", editRow.id));
+      updateRow(tableName as TableName, editRow.id, payload);
     } else {
-      ({ error } = await supabase.from(tableName).insert(payload as any));
+      insertRow(tableName as TableName, payload);
     }
-    if (error) { console.error("Database error:", error); toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" }); return; }
     toast({ title: editRow ? "Updated" : "Added" });
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });
     setShowForm(false);
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from(tableName).delete().eq("id", id);
+    deleteRow(tableName as TableName, id);
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });
     toast({ title: "Deleted" });
   };
@@ -148,11 +145,10 @@ function AgeSection({ data, contractId, subContractId }: { data: any[]; contract
 
   const handleSave = async () => {
     if (!editRow) return;
-    const { error } = await supabase.from("contract_age").update({
+    updateRow("contract_age", editRow.id, {
       min_age: parseInt(formData.min_age),
       max_age: formData.max_age ? parseInt(formData.max_age) : null,
-    }).eq("id", editRow.id);
-    if (error) { console.error("Database error:", error); toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" }); return; }
+    });
     toast({ title: "Updated" });
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });
     setEditRow(null);
@@ -216,15 +212,13 @@ function AddonsSection({ data, contractId, subContractId }: { data: any[]; contr
 
   const handleSave = async () => {
     const payload = { sub_contract_id: subContractId, sub_category: formData.sub_category, type: formData.type, value: parseFloat(formData.value) || 0, remark: formData.remark || null };
-    let error;
-    if (editRow) { ({ error } = await supabase.from("contract_addons").update(payload).eq("id", editRow.id)); }
-    else { ({ error } = await supabase.from("contract_addons").insert(payload)); }
-    if (error) { console.error("Database error:", error); toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" }); return; }
+    if (editRow) { updateRow("contract_addons", editRow.id, payload); }
+    else { insertRow("contract_addons", payload); }
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });
     setShowForm(false);
   };
 
-  const handleDelete = async (id: string) => { await supabase.from("contract_addons").delete().eq("id", id); queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] }); };
+  const handleDelete = async (id: string) => { deleteRow("contract_addons", id); queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] }); };
 
   return (
     <AccordionItem value="addons">
@@ -274,10 +268,8 @@ function InsuranceSection({ data, contractId, subContractId }: { data: any[]; co
 
   const handleSave = async () => {
     const payload = { sub_contract_id: subContractId, parameter: "Insurance cover", value: included ? "Yes" : "No", remark: remark || null };
-    let error;
-    if (insurance) { ({ error } = await supabase.from("contract_insurance").update(payload).eq("id", insurance.id)); }
-    else { ({ error } = await supabase.from("contract_insurance").insert(payload)); }
-    if (error) { console.error("Database error:", error); toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" }); return; }
+    if (insurance) { updateRow("contract_insurance", insurance.id, payload); }
+    else { insertRow("contract_insurance", payload); }
     toast({ title: "Saved" });
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });
   };
@@ -311,10 +303,8 @@ function GovChargesSection({ data, contractId, subContractId }: { data: any[]; c
 
   const handleSave = async () => {
     const payload = { sub_contract_id: subContractId, parameter: "Government_charges", value: parseFloat(value), remark: remark || null };
-    let error;
-    if (charge) { ({ error } = await supabase.from("contract_government_charges").update(payload).eq("id", charge.id)); }
-    else { ({ error } = await supabase.from("contract_government_charges").insert(payload)); }
-    if (error) { console.error("Database error:", error); toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" }); return; }
+    if (charge) { updateRow("contract_government_charges", charge.id, payload); }
+    else { insertRow("contract_government_charges", payload); }
     toast({ title: "Saved" });
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });
   };

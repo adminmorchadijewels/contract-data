@@ -5,9 +5,9 @@ import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3, List, ListOrdered, Link as LinkIcon, AlignLeft, AlignCenter, AlignRight, Undo, Redo } from "lucide-react";
+import { Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, Undo, Redo } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { insertRow, updateRow } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,19 +36,18 @@ export function NotesTab({ contract }: Props) {
     if (!editor) return;
     setSaveStatus("saving");
     const content = editor.getHTML();
-    let error;
-    if (noteRecord) {
-      ({ error } = await supabase.from("contract_notes").update({ content }).eq("id", noteRecord.id));
-    } else {
-      ({ error } = await supabase.from("contract_notes").insert({ contract_id: contract.id, content }));
-    }
-    if (error) {
-      console.error("Database error:", error);
-      toast({ title: "Operation failed", description: "Unable to save notes. Please try again.", variant: "destructive" });
-      setSaveStatus("unsaved");
-    } else {
+    try {
+      if (noteRecord) {
+        updateRow("contract_notes", noteRecord.id, { content });
+      } else {
+        insertRow("contract_notes", { contract_id: contract.id, content });
+      }
       setSaveStatus("saved");
       queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
+    } catch (err) {
+      console.error("Error:", err);
+      toast({ title: "Operation failed", description: "Unable to save notes. Please try again.", variant: "destructive" });
+      setSaveStatus("unsaved");
     }
   }, [editor, noteRecord, contract.id, queryClient, toast]);
 

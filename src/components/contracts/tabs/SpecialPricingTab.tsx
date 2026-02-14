@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { supabase } from "@/integrations/supabase/client";
+import { insertRow, updateRow, deleteRow } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -55,20 +55,18 @@ export function SpecialPricingTab({ contract }: Props) {
       start_date: formData.start_date || null,
       end_date: formData.end_date || null,
     };
-    let error;
     if (editRow) {
-      ({ error } = await supabase.from("pricing_special").update(payload).eq("id", editRow.id));
+      updateRow("pricing_special", editRow.id, payload);
     } else {
-      ({ error } = await supabase.from("pricing_special").insert(payload));
+      insertRow("pricing_special", payload);
     }
-    if (error) { console.error("Database error:", error); toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" }); return; }
     toast({ title: editRow ? "Updated" : "Added" });
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
     setShowForm(false);
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("pricing_special").delete().eq("id", id);
+    deleteRow("pricing_special", id);
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
     toast({ title: "Deleted" });
   };

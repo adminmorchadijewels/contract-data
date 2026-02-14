@@ -1,5 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export interface ColumnInfo {
   column_name: string;
@@ -31,81 +30,30 @@ export interface ForeignKey {
   on_delete: "cascade" | "set_null";
 }
 
-async function callSchemaManager(body: Record<string, unknown>) {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
-
-  const res = await supabase.functions.invoke("schema-manager", {
-    body,
-  });
-
-  if (res.error) {
-    throw new Error(res.error.message || "Schema operation failed");
-  }
-  
-  // Check if the response data contains an error
-  if (res.data?.error) {
-    throw new Error(res.data.error);
-  }
-
-  return res.data;
-}
-
+// Schema manager is not applicable with Excel-based storage.
+// This hook returns empty data and no-op mutations.
 export function useSchemaManager() {
-  const queryClient = useQueryClient();
-
   const { data: schema, isLoading, error, refetch } = useQuery({
     queryKey: ["db_schema"],
     queryFn: async () => {
-      const result = await callSchemaManager({ action: "get_schema" });
-      return (result.tables || []) as TableInfo[];
+      return [] as TableInfo[];
     },
   });
 
-  const addColumnMutation = useMutation({
-    mutationFn: (params: {
-      table_name: string;
-      column_name: string;
-      column_type: string;
-      is_nullable?: boolean;
-      default_value?: string;
-    }) => callSchemaManager({ action: "add_column", ...params }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["db_schema"] }),
-  });
-
-  const deleteColumnMutation = useMutation({
-    mutationFn: (params: { table_name: string; column_name: string }) =>
-      callSchemaManager({ action: "delete_column", ...params }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["db_schema"] }),
-  });
-
-  const renameColumnMutation = useMutation({
-    mutationFn: (params: { table_name: string; old_name: string; new_name: string }) =>
-      callSchemaManager({ action: "rename_column", ...params }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["db_schema"] }),
-  });
-
-  const createTableMutation = useMutation({
-    mutationFn: (params: {
-      table_name: string;
-      columns: NewColumn[];
-      foreign_keys?: ForeignKey[];
-    }) => callSchemaManager({ action: "create_table", ...params }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["db_schema"] }),
-  });
+  const noOp = async () => {};
 
   return {
     schema: schema || [],
     isLoading,
     error,
     refetch,
-    addColumn: addColumnMutation.mutateAsync,
-    deleteColumn: deleteColumnMutation.mutateAsync,
-    renameColumn: renameColumnMutation.mutateAsync,
-    createTable: createTableMutation.mutateAsync,
-    isAddingColumn: addColumnMutation.isPending,
-    isDeletingColumn: deleteColumnMutation.isPending,
-    isRenamingColumn: renameColumnMutation.isPending,
-    isCreatingTable: createTableMutation.isPending,
+    addColumn: noOp,
+    deleteColumn: noOp,
+    renameColumn: noOp,
+    createTable: noOp,
+    isAddingColumn: false,
+    isDeletingColumn: false,
+    isRenamingColumn: false,
+    isCreatingTable: false,
   };
 }

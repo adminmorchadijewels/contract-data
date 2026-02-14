@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { insertRow, updateRow, deleteRow } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDestinations } from "@/hooks/useContracts";
 import { useToast } from "@/hooks/use-toast";
@@ -70,26 +70,33 @@ export function StandardPricingTab({ contract }: Props) {
       start_date: formData.start_date || null,
       end_date: formData.end_date || null,
     };
-    let error;
-    if (editRow) {
-      ({ error } = await supabase.from("pricing_standard").update(payload).eq("id", editRow.id));
-    } else {
-      ({ error } = await supabase.from("pricing_standard").insert(payload));
+    try {
+      if (editRow) {
+        updateRow("pricing_standard", editRow.id, payload);
+      } else {
+        insertRow("pricing_standard", payload);
+      }
+      toast({ title: editRow ? "Pricing updated" : "Pricing added" });
+      queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
+      setShowForm(false);
+    } catch (err) {
+      console.error("Error:", err);
+      toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" });
     }
-    if (error) { console.error("Database error:", error); toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" }); return; }
-    toast({ title: editRow ? "Pricing updated" : "Pricing added" });
-    queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
-    setShowForm(false);
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("pricing_standard").delete().eq("id", id);
-    if (error) { console.error("Database error:", error); toast({ title: "Operation failed", description: "Unable to delete. Please try again.", variant: "destructive" }); return; }
-    toast({ title: "Pricing deleted" });
-    queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
+    try {
+      deleteRow("pricing_standard", id);
+      toast({ title: "Pricing deleted" });
+      queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
+    } catch (err) {
+      console.error("Error:", err);
+      toast({ title: "Operation failed", description: "Unable to delete. Please try again.", variant: "destructive" });
+    }
   };
 
-  const getDestName = (id: string) => destinations?.find((d) => d.id === id)?.name || "—";
+  const getDestName = (id: string) => destinations?.find((d: any) => d.id === id)?.name || "—";
 
   return (
     <div className="mt-4 space-y-4">
@@ -154,14 +161,14 @@ export function StandardPricingTab({ contract }: Props) {
                 <Label>Point A</Label>
                 <Select value={formData.point_a_id} onValueChange={(v) => setFormData((p) => ({ ...p, point_a_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>{destinations?.map((d) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
+                  <SelectContent>{destinations?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Point B</Label>
                 <Select value={formData.point_b_id} onValueChange={(v) => setFormData((p) => ({ ...p, point_b_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>{destinations?.map((d) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
+                  <SelectContent>{destinations?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>

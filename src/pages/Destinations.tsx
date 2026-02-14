@@ -3,19 +3,11 @@ import { Search, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useDestinations } from "@/hooks/useContracts";
 import { useTableSettings } from "@/hooks/useTableSettings";
 
 export default function Destinations() {
-  const { data: destinations, isLoading } = useQuery({
-    queryKey: ["destinations"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("destinations").select("*").order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: destinations, isLoading } = useDestinations();
 
   const { getVisibleColumns } = useTableSettings();
   const columns = getVisibleColumns("destinations");
@@ -23,7 +15,7 @@ export default function Destinations() {
 
   const filtered = useMemo(() => {
     if (!destinations) return [];
-    return destinations.filter((d) =>
+    return destinations.filter((d: any) =>
       d.name.toLowerCase().includes(search.toLowerCase()) ||
       (d.code || "").toLowerCase().includes(search.toLowerCase())
     );
@@ -62,7 +54,7 @@ export default function Destinations() {
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={columns.length} className="text-center py-12 text-muted-foreground">No destinations found.</TableCell></TableRow>
             ) : (
-              filtered.map((dest) => (
+              filtered.map((dest: any) => (
                 <TableRow key={dest.id} className="data-table-row">
                   {columns.map((col) => (
                     <TableCell key={col.key} className={col.key === "name" ? "font-medium" : "text-muted-foreground"}>

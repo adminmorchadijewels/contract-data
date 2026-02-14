@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { selectWhere, insertRow, updateRow } from "@/lib/excelDataService";
 
 export interface ColumnConfig {
   key: string;
@@ -41,36 +40,28 @@ export const DEFAULT_COLUMNS: Record<string, ColumnConfig[]> = {
   ],
 };
 
+const LOCAL_USER_ID = "local-user";
+
 export function useTableSettings() {
   const queryClient = useQueryClient();
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-  }, []);
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ["table_settings", userId],
+    queryKey: ["table_settings", LOCAL_USER_ID],
     queryFn: async () => {
-      if (!userId) return [];
-      const { data, error } = await supabase
-        .from("table_settings")
-        .select("*")
-        .eq("user_id", userId);
-      if (error) throw error;
-      return data as any[];
+      return selectWhere("table_settings", "user_id", LOCAL_USER_ID);
     },
-    enabled: !!userId,
   });
 
   const getSettingsForTable = (tableName: string): TableSetting => {
-    const found = settings?.find((s: any) => s.table_name === tableName);
+    const found = (settings as any[])?.find((s: any) => s.table_name === tableName);
     if (found) {
       return {
         id: found.id,
         table_name: found.table_name,
         visible: found.visible,
-        column_config: found.column_config as ColumnConfig[],
+        column_config: typeof found.column_config === "string"
+          ? JSON.parse(found.column_config)
+          : found.column_config as ColumnConfig[],
       };
     }
     return {
@@ -89,24 +80,16 @@ export function useTableSettings() {
 
   const upsertMutation = useMutation({
     mutationFn: async (setting: TableSetting) => {
-      if (!userId) throw new Error("Not authenticated");
       const payload = {
-        user_id: userId,
+        user_id: LOCAL_USER_ID,
         table_name: setting.table_name,
         visible: setting.visible,
-        column_config: setting.column_config as any,
+        column_config: setting.column_config,
       };
       if (setting.id) {
-        const { error } = await supabase
-          .from("table_settings")
-          .update(payload)
-          .eq("id", setting.id);
-        if (error) throw error;
+        updateRow("table_settings", setting.id, payload);
       } else {
-        const { error } = await supabase
-          .from("table_settings")
-          .insert(payload);
-        if (error) throw error;
+        insertRow("table_settings", payload);
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["table_settings"] }),
