@@ -6,7 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { initializeData } from "@/lib/excelDataService";
+import { DataFolderConnector } from "@/components/layout/DataFolderConnector";
+import { initializeData, restoreDataDirectory } from "@/lib/excelDataService";
 import Index from "./pages/Index";
 import ContractsPage from "./pages/Contracts";
 import SettingsPage from "./pages/Settings";
@@ -20,8 +21,9 @@ function AppLayout() {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-12 flex items-center border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 z-50 px-4">
+          <header className="h-12 flex items-center justify-between border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 z-50 px-4">
             <SidebarTrigger />
+            <DataFolderConnector />
           </header>
           <main className="flex-1 p-6">
             <Routes>
@@ -41,7 +43,13 @@ const App = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initializeData().then(() => setReady(true));
+    async function boot() {
+      await initializeData();
+      // Try to restore previously connected data directory
+      await restoreDataDirectory();
+      setReady(true);
+    }
+    boot();
   }, []);
 
   if (!ready) {
