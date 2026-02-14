@@ -51,137 +51,21 @@ function now(): string {
   return new Date().toISOString();
 }
 
-// ─── File System Access API (persist to Excel) ──────────────────────
+// ─── Auto-persist to Excel via dev server ───────────────────────────
 
-let _dirHandle: FileSystemDirectoryHandle | null = null;
-let _connected = false;
-const _listeners: Array<(connected: boolean) => void> = [];
+let _persistEnabled = true;
 
-const DB_NAME = "aero_fs";
-const STORE_NAME = "handles";
+function persistTableToExcel(table: TableName, rows: unknown[]): void {
+  if (!_persistEnabled) return;
 
-function openIDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+  // Fire-and-forget POST to the Vite dev server plugin
+  fetch("/__api/save-table", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ table, rows }),
+  }).catch(() => {
+    // Silently ignore — server may not be available (e.g. production build)
   });
-}
-
-async function storeHandle(handle: FileSystemDirectoryHandle): Promise<void> {
-  const db = await openIDB();
-  const tx = db.transaction(STORE_NAME, "readwrite");
-  tx.objectStore(STORE_NAME).put(handle, "dataDir");
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function loadHandle(): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    const db = await openIDB();
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const req = tx.objectStore(STORE_NAME).get("dataDir");
-    return new Promise((resolve) => {
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => resolve(null);
-    });
-  } catch {
-    return null;
-  }
-}
-
-function setConnected(val: boolean) {
-  _connected = val;
-  _listeners.forEach((fn) => fn(val));
-}
-
-/** Subscribe to connection status changes. Returns unsubscribe function. */
-export function onConnectionChange(fn: (connected: boolean) => void): () => void {
-  _listeners.push(fn);
-  return () => {
-    const idx = _listeners.indexOf(fn);
-    if (idx >= 0) _listeners.splice(idx, 1);
-  };
-}
-
-/** Whether a data directory is connected for auto-persist. */
-export function isDirectoryConnected(): boolean {
-  return _connected;
-}
-
-/** Prompt user to select the public/data/ folder for auto-persist. */
-export async function connectDataDirectory(): Promise<boolean> {
-  try {
-    const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
-    _dirHandle = handle;
-    await storeHandle(handle);
-    setConnected(true);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Disconnect the data directory. */
-export async function disconnectDataDirectory(): Promise<void> {
-  _dirHandle = null;
-  setConnected(false);
-  try {
-    const db = await openIDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).delete("dataDir");
-  } catch { /* ignore */ }
-}
-
-/** Try to restore a previously connected directory from IndexedDB. */
-export async function restoreDataDirectory(): Promise<boolean> {
-  try {
-    const handle = await loadHandle();
-    if (!handle) return false;
-    const perm = await (handle as any).requestPermission({ mode: "readwrite" });
-    if (perm !== "granted") return false;
-    _dirHandle = handle;
-    setConnected(true);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Write one table's current data to its .xlsx file in the connected directory. */
-async function persistTableToExcel(table: TableName): Promise<void> {
-  if (!_dirHandle) return;
-
-  try {
-    const data = getTable(table);
-    const wb = XLSX.utils.book_new();
-
-    if (data.length === 0) {
-      const ws = XLSX.utils.aoa_to_sheet([]);
-      XLSX.utils.book_append_sheet(wb, ws, table);
-    } else {
-      const flatData = data.map((row: any) => {
-        const flat: Record<string, unknown> = {};
-        for (const [key, val] of Object.entries(row)) {
-          flat[key] = Array.isArray(val) ? JSON.stringify(val) : val;
-        }
-        return flat;
-      });
-      const ws = XLSX.utils.json_to_sheet(flatData);
-      XLSX.utils.book_append_sheet(wb, ws, table);
-    }
-
-    const xlsxBuf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-    const fileHandle = await _dirHandle.getFileHandle(`${table}.xlsx`, { create: true });
-    const writable = await (fileHandle as any).createWritable();
-    await writable.write(new Uint8Array(xlsxBuf));
-    await writable.close();
-  } catch (err) {
-    console.warn(`Failed to persist ${table} to Excel:`, err);
-  }
 }
 
 // ─── Core localStorage CRUD ─────────────────────────────────────────
@@ -198,8 +82,8 @@ function getTable<T = Record<string, unknown>>(table: TableName): T[] {
 
 function setTable<T = Record<string, unknown>>(table: TableName, data: T[]): void {
   localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(data));
-  // Auto-persist to Excel file (fire-and-forget)
-  persistTableToExcel(table);
+  // Auto-persist to Excel file via dev server
+  persistTableToExcel(table, data);
 }
 
 export function selectAll<T = Record<string, unknown>>(table: TableName): T[] {
@@ -363,9 +247,8 @@ export async function initializeData(): Promise<void> {
   // Only seed if no data exists yet
   if (localStorage.getItem(STORAGE_PREFIX + "companies")) return;
 
-  // Temporarily disconnect so seeding doesn't trigger file writes
-  const prevHandle = _dirHandle;
-  _dirHandle = null;
+  // Disable persist during seeding so we don't overwrite source files
+  _persistEnabled = false;
 
   for (const table of SEED_TABLES) {
     try {
@@ -384,8 +267,7 @@ export async function initializeData(): Promise<void> {
     }
   }
 
-  // Restore handle
-  _dirHandle = prevHandle;
+  _persistEnabled = true;
 
   // Clear old destinations if any
   localStorage.removeItem(STORAGE_PREFIX + "destinations");
