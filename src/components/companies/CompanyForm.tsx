@@ -33,6 +33,7 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
   });
 
   useEffect(() => {
+    if (!open) return;
     if (company) {
       form.reset({
         name: company.name,
@@ -46,7 +47,7 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
     } else {
       form.reset({ name: "", type: "Resort", code: "", atoll: "", address: "", registration_no: "", coordinates: "" });
     }
-  }, [company, form]);
+  }, [open, company, form]);
 
   const onSubmit = async (data: CompanyFormData) => {
     if (isEdit) {
@@ -96,10 +97,10 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
               <FormField control={form.control} name="atoll" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Atoll</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <Select onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} value={field.value || "__none__"}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Select atoll" /></SelectTrigger></FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {atolls?.map((a: any) => (
                         <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
                       ))}

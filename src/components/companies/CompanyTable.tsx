@@ -184,7 +184,7 @@ export function CompanyTable() {
         </Table>
       </div>
 
-      <CompanyForm open={showForm} onClose={() => setShowForm(false)} company={editCompany} />
+      <CompanyForm open={showForm} onClose={() => { setShowForm(false); setEditCompany(null); }} company={editCompany} />
       <CompanyDeleteDialog company={deleteCompany} onClose={() => setDeleteCompany(null)} />
     </div>
   );

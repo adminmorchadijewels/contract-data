@@ -35,6 +35,7 @@ export function ContractForm({ open, onClose, contract }: Props) {
   });
 
   useEffect(() => {
+    if (!open) return;
     if (contract) {
       form.reset({
         contract_id: contract.contract_id,
@@ -56,7 +57,7 @@ export function ContractForm({ open, onClose, contract }: Props) {
         agreement_type: "Exclusive Seaplane (Day time)",
       });
     }
-  }, [contract, form]);
+  }, [open, contract, form]);
 
   // Auto-generate sub_contract_id
   const contractId = form.watch("contract_id");

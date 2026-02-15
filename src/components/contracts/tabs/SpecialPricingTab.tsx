@@ -112,7 +112,7 @@ export function SpecialPricingTab({ contract }: Props) {
         </Table>
       </div>
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditRow(null); }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader><DialogTitle>{editRow ? "Edit Special Pricing" : "Add Special Pricing"}</DialogTitle></DialogHeader>
           <div className="space-y-4">

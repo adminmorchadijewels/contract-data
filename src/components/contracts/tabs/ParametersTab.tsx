@@ -110,7 +110,7 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
           </Table>
         </div>
 
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditRow(null); }}>
           <DialogContent>
             <DialogHeader><DialogTitle>{editRow ? "Edit" : "Add"} {title}</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -242,7 +242,7 @@ function AddonsSection({ data, contractId, subContractId }: { data: any[]; contr
             </TableBody>
           </Table>
         </div>
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditRow(null); }}>
           <DialogContent>
             <DialogHeader><DialogTitle>{editRow ? "Edit" : "Add"} Add-on</DialogTitle></DialogHeader>
             <div className="space-y-3">

@@ -155,7 +155,7 @@ export function ContractTable() {
         </Table>
       </div>
 
-      <ContractForm open={showForm} onClose={() => setShowForm(false)} contract={editContract} />
+      <ContractForm open={showForm} onClose={() => { setShowForm(false); setEditContract(null); }} contract={editContract} />
       <ContractDetailModal contractId={viewContractId} onClose={() => setViewContractId(null)} onEdit={handleEditFromModal} />
 
       <AlertDialog open={!!deleteContract} onOpenChange={() => setDeleteContract(null)}>

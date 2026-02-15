@@ -144,7 +144,7 @@ export function StandardPricingTab({ contract }: Props) {
         </Table>
       </div>
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      <Dialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditRow(null); }}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader><DialogTitle>{editRow ? "Edit Pricing" : "Add Pricing"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
