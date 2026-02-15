@@ -149,71 +149,53 @@ export function deleteWhere(table: TableName, field: string, value: unknown): nu
 
 // ─── Excel Import / Export ──────────────────────────────────────────
 
-export function exportToExcel(): void {
-  const wb = XLSX.utils.book_new();
-
-  for (const table of ALL_TABLES) {
-    const data = getTable(table);
-    if (data.length === 0) {
-      const ws = XLSX.utils.json_to_sheet([]);
-      XLSX.utils.book_append_sheet(wb, ws, table);
-    } else {
-      const flatData = data.map((row: any) => {
-        const flat: Record<string, unknown> = {};
-        for (const [key, val] of Object.entries(row)) {
-          flat[key] = Array.isArray(val) ? JSON.stringify(val) : val;
-        }
-        return flat;
-      });
-      const ws = XLSX.utils.json_to_sheet(flatData);
-      XLSX.utils.book_append_sheet(wb, ws, table);
-    }
+function addTableSheet(wb: XLSX.WorkBook, table: TableName): void {
+  const data = getTable(table);
+  if (data.length === 0) {
+    const ws = XLSX.utils.json_to_sheet([]);
+    XLSX.utils.book_append_sheet(wb, ws, table);
+  } else {
+    const flatData = data.map((row: any) => {
+      const flat: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(row)) {
+        flat[key] = Array.isArray(val) ? JSON.stringify(val) : val;
+      }
+      return flat;
+    });
+    const ws = XLSX.utils.json_to_sheet(flatData);
+    XLSX.utils.book_append_sheet(wb, ws, table);
   }
-
-  XLSX.writeFile(wb, "aerocontracts_data.xlsx");
 }
 
-export function importFromExcel(file: File): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: "array" });
+const RESORT_TABLES: TableName[] = ["companies", "atolls"];
 
-        for (const sheetName of wb.SheetNames) {
-          const tableName = sheetName as TableName;
-          if (!ALL_TABLES.includes(tableName)) continue;
+const CONTRACT_TABLES: TableName[] = [
+  "contracts",
+  "pricing_standard",
+  "pricing_special",
+  "contract_baggage",
+  "contract_booking",
+  "contract_age",
+  "contract_addons",
+  "contract_insurance",
+  "contract_government_charges",
+  "contract_fuel",
+  "contract_payment_plan",
+  "contract_service_commitment",
+  "contract_termination",
+  "contract_notes",
+];
 
-          const ws = wb.Sheets[sheetName];
-          const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws);
+export function exportResortData(): void {
+  const wb = XLSX.utils.book_new();
+  for (const table of RESORT_TABLES) addTableSheet(wb, table);
+  XLSX.writeFile(wb, "tma_resort_data.xlsx");
+}
 
-          const parsed = rows.map((row) => {
-            const out: Record<string, unknown> = {};
-            for (const [key, val] of Object.entries(row)) {
-              if (typeof val === "string" && val.startsWith("[") && val.endsWith("]")) {
-                try {
-                  out[key] = JSON.parse(val);
-                } catch {
-                  out[key] = val;
-                }
-              } else {
-                out[key] = val;
-              }
-            }
-            return out;
-          });
-
-          setTable(tableName, parsed);
-        }
-        resolve();
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsArrayBuffer(file);
-  });
+export function exportContractData(): void {
+  const wb = XLSX.utils.book_new();
+  for (const table of CONTRACT_TABLES) addTableSheet(wb, table);
+  XLSX.writeFile(wb, "tma_contracts_data.xlsx");
 }
 
 // ─── Seed Data (loaded from Excel files in public/data/) ────────────

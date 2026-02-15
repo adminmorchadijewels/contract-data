@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Plus, Building2, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Hotel, TrendingUp, TrendingDown } from "lucide-react";
+import { Search, Plus, Building2, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Hotel, TrendingUp, TrendingDown, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { useCompanies } from "@/hooks/useCompanies";
 import { useTableSettings } from "@/hooks/useTableSettings";
 import { CompanyForm } from "./CompanyForm";
 import { CompanyDeleteDialog } from "./CompanyDeleteDialog";
+import { exportResortData } from "@/lib/excelDataService";
 
 export function CompanyTable() {
   const { data: companies, isLoading } = useCompanies();
@@ -131,9 +132,14 @@ export function CompanyTable() {
           <Building2 className="h-6 w-6 text-primary" />
           <h2 className="text-2xl font-bold text-foreground">Resort Data</h2>
         </div>
-        <Button className="btn-gradient-primary rounded-lg" onClick={() => { setEditCompany(null); setShowForm(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Company
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="rounded-lg" onClick={exportResortData}>
+            <Download className="h-4 w-4 mr-2" /> Export
+          </Button>
+          <Button className="btn-gradient-primary rounded-lg" onClick={() => { setEditCompany(null); setShowForm(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Company
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-3">

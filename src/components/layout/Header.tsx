@@ -17,8 +17,8 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
             <Plane className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground">AeroContracts</h1>
-            <p className="text-xs text-muted-foreground">Aviation Contract Management</p>
+            <h1 className="text-lg font-bold text-foreground">TMA Contracts</h1>
+            <p className="text-xs text-muted-foreground">Contract Management</p>
           </div>
         </div>
 

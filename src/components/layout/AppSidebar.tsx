@@ -1,10 +1,6 @@
-import { Building2, FileText, Settings, Plane, Sun, Moon, Download, Upload } from "lucide-react";
+import { Building2, FileText, Settings, Plane, Sun, Moon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { exportToExcel, importFromExcel } from "@/lib/excelDataService";
-import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { useRef } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -24,28 +20,7 @@ const navItems = [
 ];
 
 export function AppSidebar() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const toggleDark = () => document.documentElement.classList.toggle("dark");
-
-  const handleExport = () => {
-    exportToExcel();
-    toast({ title: "Data exported to Excel" });
-  };
-
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      await importFromExcel(file);
-      queryClient.invalidateQueries();
-      toast({ title: "Data imported from Excel" });
-    } catch {
-      toast({ title: "Import failed", description: "Please check the file format.", variant: "destructive" });
-    }
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -54,7 +29,7 @@ export function AppSidebar() {
           <Plane className="h-4 w-4 text-primary-foreground" />
         </div>
         <div className="overflow-hidden">
-          <h1 className="text-sm font-bold text-sidebar-foreground truncate">AeroContracts</h1>
+          <h1 className="text-sm font-bold text-sidebar-foreground truncate">TMA Contracts</h1>
           <p className="text-xs text-muted-foreground truncate">Contract Management</p>
         </div>
       </div>
@@ -83,26 +58,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Data</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleExport} className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors cursor-pointer">
-                  <Download className="h-4 w-4 shrink-0" />
-                  <span>Export to Excel</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => fileInputRef.current?.click()} className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors cursor-pointer">
-                  <Upload className="h-4 w-4 shrink-0" />
-                  <span>Import from Excel</span>
-                </SidebarMenuButton>
-                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">

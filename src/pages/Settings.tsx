@@ -1,9 +1,9 @@
-import { useState, useRef } from "react";
-import { Settings as SettingsIcon, Download, Upload, Plus, X } from "lucide-react";
+import { useState } from "react";
+import { Settings as SettingsIcon, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableSettingsModal } from "@/components/settings/TableSettingsModal";
-import { exportToExcel, importFromExcel, selectAll, insertRow, deleteRow } from "@/lib/excelDataService";
+import { selectAll, insertRow, deleteRow } from "@/lib/excelDataService";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,30 +12,11 @@ export default function SettingsPage() {
   const [newAtoll, setNewAtoll] = useState("");
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: atolls } = useQuery({
     queryKey: ["atolls"],
     queryFn: () => selectAll("atolls").sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")),
   });
-
-  const handleExport = () => {
-    exportToExcel();
-    toast({ title: "Data exported to Excel" });
-  };
-
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      await importFromExcel(file);
-      queryClient.invalidateQueries();
-      toast({ title: "Data imported from Excel" });
-    } catch {
-      toast({ title: "Import failed", description: "Please check the file format.", variant: "destructive" });
-    }
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
 
   const handleAddAtoll = () => {
     const name = newAtoll.trim();
@@ -110,24 +91,6 @@ export default function SettingsPage() {
           {(!atolls || atolls.length === 0) && (
             <span className="text-sm text-muted-foreground">No atolls configured yet.</span>
           )}
-        </div>
-      </div>
-
-      <div className="glass-card p-6 space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">Data Management</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Export all data to an Excel file or import data from an existing Excel file. Each table is stored as a separate sheet.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button onClick={handleExport} className="btn-gradient-primary">
-            <Download className="h-4 w-4 mr-2" /> Export to Excel
-          </Button>
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-2" /> Import from Excel
-          </Button>
-          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
         </div>
       </div>
 
