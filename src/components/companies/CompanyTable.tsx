@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Plus, Building2, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Hotel } from "lucide-react";
+import { Search, Plus, Building2, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Hotel, TrendingUp, TrendingDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -96,19 +96,33 @@ export function CompanyTable() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="glass-card p-5 hover:glow-effect transition-all duration-200">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground">Total Group Companies</span>
-            <Building2 className="h-5 w-5 text-primary" />
+        <div className="rounded-xl p-5 transition-all duration-200 hover:shadow-md bg-blue-50 dark:bg-blue-950/40">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Group Companies</span>
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-blue-100 dark:bg-blue-900/50">
+              <Building2 className="h-[18px] w-[18px] text-blue-600 dark:text-blue-400" />
+            </div>
           </div>
-          <span className="text-2xl font-bold text-foreground">{stats.groups}</span>
+          <div className="text-3xl font-bold text-foreground mb-2">{stats.groups}</div>
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">+4%</span>
+            <span className="text-xs text-muted-foreground">from last month</span>
+          </div>
         </div>
-        <div className="glass-card p-5 hover:glow-effect transition-all duration-200">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground">Total Resorts</span>
-            <Hotel className="h-5 w-5 text-success" />
+        <div className="rounded-xl p-5 transition-all duration-200 hover:shadow-md bg-emerald-50 dark:bg-emerald-950/40">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Resorts</span>
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/50">
+              <Hotel className="h-[18px] w-[18px] text-emerald-600 dark:text-emerald-400" />
+            </div>
           </div>
-          <span className="text-2xl font-bold text-foreground">{stats.resorts}</span>
+          <div className="text-3xl font-bold text-foreground mb-2">{stats.resorts}</div>
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">+6%</span>
+            <span className="text-xs text-muted-foreground">from last month</span>
+          </div>
         </div>
       </div>
 
