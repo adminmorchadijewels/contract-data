@@ -1,16 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Loader2, WifiOff, RefreshCw, Trash2, Sparkles } from "lucide-react";
+import { Send, Bot, User, Loader2, Trash2, Sparkles, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
-  checkOllamaStatus,
+  loadModel,
+  isModelReady,
   streamChat,
+  AVAILABLE_MODELS,
   type ChatMessage,
-  type OllamaStatus,
-} from "@/lib/ollamaService";
+  type ModelStatus,
+} from "@/lib/webLLMService";
 
 interface DisplayMessage extends ChatMessage {
   id: string;
@@ -21,12 +24,17 @@ export function AIAssistant() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [status, setStatus] = useState<OllamaStatus>({ connected: false, models: [] });
-  const [selectedModel, setSelectedModel] = useState("");
-  const [checking, setChecking] = useState(true);
+  const [modelStatus, setModelStatus] = useState<ModelStatus>({
+    ready: false,
+    loading: false,
+    progress: 0,
+    progressText: "",
+    error: null,
+    modelId: AVAILABLE_MODELS[0].id,
+  });
+  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -38,23 +46,44 @@ export function AIAssistant() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const checkConnection = useCallback(async () => {
-    setChecking(true);
-    const s = await checkOllamaStatus();
-    setStatus(s);
-    if (s.connected && s.models.length > 0 && !selectedModel) {
-      setSelectedModel(s.models[0]);
-    }
-    setChecking(false);
-  }, [selectedModel]);
+  const handleLoadModel = useCallback(async (modelId?: string) => {
+    const id = modelId || selectedModel;
+    setModelStatus((prev) => ({
+      ...prev,
+      loading: true,
+      progress: 0,
+      progressText: "Initializing...",
+      error: null,
+      modelId: id,
+    }));
 
-  useEffect(() => {
-    checkConnection();
-  }, [checkConnection]);
+    try {
+      await loadModel(id, (report) => {
+        setModelStatus((prev) => ({
+          ...prev,
+          progress: Math.round(report.progress * 100),
+          progressText: report.text,
+        }));
+      });
+      setModelStatus((prev) => ({
+        ...prev,
+        ready: true,
+        loading: false,
+        progress: 100,
+        progressText: "Model ready",
+      }));
+    } catch (err: any) {
+      setModelStatus((prev) => ({
+        ...prev,
+        loading: false,
+        error: err.message || "Failed to load model",
+      }));
+    }
+  }, [selectedModel]);
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || isStreaming || !status.connected) return;
+    if (!text || isStreaming || !modelStatus.ready) return;
 
     const userMsg: DisplayMessage = {
       id: crypto.randomUUID(),
@@ -80,7 +109,7 @@ export function AIAssistant() {
     ];
 
     try {
-      for await (const chunk of streamChat(chatHistory, selectedModel)) {
+      for await (const chunk of streamChat(chatHistory)) {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsg.id
@@ -93,7 +122,7 @@ export function AIAssistant() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMsg.id
-            ? { ...m, content: `Error: ${err.message || "Failed to get response from Ollama."}` }
+            ? { ...m, content: `Error: ${err.message || "Failed to get response."}` }
             : m
         )
       );
@@ -135,30 +164,19 @@ export function AIAssistant() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {status.connected ? (
+          {modelStatus.ready ? (
             <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-              Connected
+              Model Ready
+            </Badge>
+          ) : modelStatus.loading ? (
+            <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading...
             </Badge>
           ) : (
-            <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
-              <WifiOff className="h-3 w-3 mr-1" /> Disconnected
+            <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400">
+              Not Loaded
             </Badge>
           )}
-          {status.connected && status.models.length > 0 && (
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="w-44 h-8 text-xs">
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {status.models.map((m) => (
-                  <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={checkConnection} disabled={checking}>
-            <RefreshCw className={`h-4 w-4 ${checking ? "animate-spin" : ""}`} />
-          </Button>
           {messages.length > 0 && (
             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={clearChat} disabled={isStreaming}>
               <Trash2 className="h-4 w-4" />
@@ -169,26 +187,64 @@ export function AIAssistant() {
 
       {/* Chat Area */}
       <div className="glass-card flex flex-col" style={{ height: "calc(100vh - 280px)" }}>
-        {!status.connected ? (
+        {!modelStatus.ready ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4 max-w-md">
-              <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto">
-                <WifiOff className="h-8 w-8 text-muted-foreground" />
+            <div className="text-center space-y-5 max-w-md">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center mx-auto">
+                {modelStatus.loading ? (
+                  <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
+                ) : (
+                  <Download className="h-8 w-8 text-violet-500" />
+                )}
               </div>
-              <h3 className="text-lg font-semibold">Ollama Not Connected</h3>
-              <p className="text-sm text-muted-foreground">
-                Make sure Ollama is running locally on port 11434. Start it with:
-              </p>
-              <code className="block bg-secondary/50 rounded-lg px-4 py-2 text-sm font-mono">
-                ollama serve
-              </code>
-              <p className="text-xs text-muted-foreground">
-                Then pull a model: <code className="bg-secondary/50 rounded px-1.5 py-0.5">ollama pull llama3.2</code>
-              </p>
-              <Button variant="outline" onClick={checkConnection} disabled={checking} className="mt-2">
-                <RefreshCw className={`h-4 w-4 mr-2 ${checking ? "animate-spin" : ""}`} />
-                Retry Connection
-              </Button>
+
+              {modelStatus.loading ? (
+                <>
+                  <h3 className="text-lg font-semibold">Loading AI Model</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {modelStatus.progressText}
+                  </p>
+                  <Progress value={modelStatus.progress} className="w-full" />
+                  <p className="text-xs text-muted-foreground">
+                    {modelStatus.progress}% complete &middot; This may take a moment on first load
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-semibold">Load AI Model</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Select and load an AI model to start chatting. The model runs entirely in your browser — no data leaves your device.
+                  </p>
+
+                  <Select value={selectedModel} onValueChange={setSelectedModel}>
+                    <SelectTrigger className="w-full h-10 text-sm">
+                      <SelectValue placeholder="Select a model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AVAILABLE_MODELS.map((m) => (
+                        <SelectItem key={m.id} value={m.id} className="text-sm">{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {modelStatus.error && (
+                    <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                      {modelStatus.error}
+                    </p>
+                  )}
+
+                  <Button
+                    onClick={() => handleLoadModel()}
+                    className="btn-gradient-primary"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Load Model
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    The model will be cached in your browser for future use.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         ) : messages.length === 0 ? (
@@ -254,7 +310,7 @@ export function AIAssistant() {
         )}
 
         {/* Input Area */}
-        {status.connected && (
+        {modelStatus.ready && (
           <div className="border-t border-border/50 p-4">
             <div className="flex gap-2 max-w-3xl mx-auto">
               <Textarea
@@ -281,7 +337,7 @@ export function AIAssistant() {
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground text-center mt-2">
-              Powered by Ollama &middot; {selectedModel || "No model selected"} &middot; Data stays local
+              Runs locally in your browser &middot; No data leaves your device
             </p>
           </div>
         )}
