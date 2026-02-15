@@ -30,12 +30,10 @@ export const DEFAULT_COLUMNS: Record<string, ColumnConfig[]> = {
   ],
   contracts: [
     { key: "contract_code", label: "Contract Code", visible: true, order: 0 },
-    { key: "resort", label: "Resort", visible: true, order: 1 },
-    { key: "group", label: "Group", visible: true, order: 2 },
-    { key: "sub_contract_type", label: "Type", visible: true, order: 3 },
-    { key: "start_date", label: "Start Date", visible: true, order: 4 },
-    { key: "end_date", label: "End Date", visible: true, order: 5 },
-    { key: "status", label: "Status", visible: true, order: 6 },
+    { key: "group", label: "Group", visible: true, order: 1 },
+    { key: "resort", label: "Resort", visible: true, order: 2 },
+    { key: "sub_contracts", label: "Sub-Contracts", visible: true, order: 3 },
+    { key: "status", label: "Status", visible: true, order: 4 },
   ],
 };
 

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useContracts } from "@/hooks/useContracts";
 import { useTableSettings } from "@/hooks/useTableSettings";
-import { format } from "date-fns";
+
 import { KPICards } from "./KPICards";
 import { ContractForm } from "./ContractForm";
 import { ContractDetailModal } from "./ContractDetailModal";
@@ -117,6 +117,45 @@ export function ContractTable() {
     return "Expired";
   };
 
+  const getParentCellValue = (group: ContractGroup, key: string) => {
+    const status = getGroupStatus(group);
+    switch (key) {
+      case "contract_code":
+        return <span className="font-medium text-primary">{group.contractCode}</span>;
+      case "group":
+        return <span className="text-muted-foreground">{group.group?.name || "\u2014"}</span>;
+      case "resort":
+        return <span className="text-muted-foreground">{group.resort?.name || "\u2014"}</span>;
+      case "sub_contracts":
+        return <Badge variant="secondary" className="text-xs">{group.subContracts.length}</Badge>;
+      case "status":
+        return (
+          <span className={`status-badge ${status === "Active" ? "status-active" : status === "Expiring" ? "status-expiring" : "status-expired"}`}>
+            {status}
+          </span>
+        );
+      default:
+        return "\u2014";
+    }
+  };
+
+  const getSubCellValue = (sub: any, key: string) => {
+    switch (key) {
+      case "contract_code":
+        return <span className="text-sm text-muted-foreground">{sub.sub_contract_id || sub.contract_code}</span>;
+      case "group":
+        return <span className="text-muted-foreground text-sm">{sub.group?.name || "\u2014"}</span>;
+      case "resort":
+        return <span className="text-muted-foreground text-sm">{sub.resort?.name || "\u2014"}</span>;
+      case "sub_contracts":
+        return <Badge variant="outline" className="text-xs">{sub.sub_contract_type || "\u2014"}</Badge>;
+      case "status":
+        return getStatusBadge(sub.start_date, sub.end_date);
+      default:
+        return "\u2014";
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <KPICards contracts={contracts} />
@@ -157,26 +196,23 @@ export function ContractTable() {
           <TableHeader>
             <TableRow className="border-border/30 hover:bg-transparent">
               <TableHead className="font-semibold w-10"></TableHead>
-              <TableHead className="font-semibold">Contract Code</TableHead>
-              <TableHead className="font-semibold">Group</TableHead>
-              <TableHead className="font-semibold">Resort</TableHead>
-              <TableHead className="font-semibold">Sub-Contracts</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
+              {columns.map((col) => (
+                <TableHead key={col.key} className="font-semibold">{col.label}</TableHead>
+              ))}
               <TableHead className="font-semibold w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={columns.length + 2}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
               ))
             ) : grouped.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">No contracts found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={columns.length + 2} className="text-center py-12 text-muted-foreground">No contracts found.</TableCell></TableRow>
             ) : (
               grouped.map((group) => {
                 const isExpanded = expandedGroups.has(group.contractId);
                 const hasSubs = group.subContracts.length > 1;
-                const status = getGroupStatus(group);
 
                 return (
                   <>
@@ -191,19 +227,9 @@ export function ContractTable() {
                           isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         ) : <span className="w-4 inline-block" />}
                       </TableCell>
-                      <TableCell>
-                        <span className="font-medium text-primary">{group.contractCode}</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{group.group?.name || "\u2014"}</TableCell>
-                      <TableCell className="text-muted-foreground">{group.resort?.name || "\u2014"}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs">{group.subContracts.length}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`status-badge ${status === "Active" ? "status-active" : status === "Expiring" ? "status-expiring" : "status-expired"}`}>
-                          {status}
-                        </span>
-                      </TableCell>
+                      {columns.map((col) => (
+                        <TableCell key={col.key}>{getParentCellValue(group, col.key)}</TableCell>
+                      ))}
                       <TableCell>
                         {!hasSubs && (
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -222,15 +248,11 @@ export function ContractTable() {
                         onClick={() => setViewContractId(sub.id)}
                       >
                         <TableCell className="w-10 px-3" />
-                        <TableCell className="pl-8">
-                          <span className="text-sm text-muted-foreground">{sub.sub_contract_id || sub.contract_code}</span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{sub.group?.name || "\u2014"}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{sub.resort?.name || "\u2014"}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">{sub.sub_contract_type || "\u2014"}</Badge>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(sub.start_date, sub.end_date)}</TableCell>
+                        {columns.map((col, colIdx) => (
+                          <TableCell key={col.key} className={colIdx === 0 ? "pl-8" : ""}>
+                            {getSubCellValue(sub, col.key)}
+                          </TableCell>
+                        ))}
                         <TableCell>
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(sub.id)}><Eye className="h-4 w-4" /></Button>

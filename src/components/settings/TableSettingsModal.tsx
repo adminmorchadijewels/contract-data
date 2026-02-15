@@ -86,7 +86,6 @@ export function TableSettingsModal({ open, onClose }: Props) {
   const tableLabels: Record<string, string> = {
     companies: "Resort Data",
     contracts: "Contracts",
-    destinations: "Destinations",
   };
 
   return (

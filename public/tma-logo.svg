@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <circle cx="60" cy="60" r="58" fill="#C41E3A" stroke="#9B1B30" stroke-width="2"/>
+  <circle cx="60" cy="60" r="50" fill="none" stroke="white" stroke-width="1.5" opacity="0.3"/>
+  <!-- Seaplane body -->
+  <path d="M25 68 L55 52 L95 52 L85 68 Z" fill="white" opacity="0.95"/>
+  <!-- Wing -->
+  <path d="M40 52 L60 35 L80 35 L60 52" fill="white" opacity="0.85"/>
+  <!-- Tail -->
+  <path d="M88 52 L95 38 L98 38 L95 52" fill="white" opacity="0.85"/>
+  <!-- Pontoons -->
+  <path d="M35 70 L85 70 L82 74 L32 74 Z" fill="white" opacity="0.7"/>
+  <!-- Water line -->
+  <path d="M20 78 Q40 74 60 78 Q80 82 100 78" stroke="white" stroke-width="1.5" fill="none" opacity="0.5"/>
+  <path d="M15 83 Q35 79 55 83 Q75 87 95 83" stroke="white" stroke-width="1" fill="none" opacity="0.3"/>
+  <!-- TMA text -->
+  <text x="60" y="100" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold" letter-spacing="3">TMA</text>
+</svg>

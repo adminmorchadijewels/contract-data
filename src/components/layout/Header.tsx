@@ -1,4 +1,4 @@
-import { Plane, Sun, Moon } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
@@ -13,9 +13,7 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
     <header className="border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 z-50">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl btn-gradient-primary flex items-center justify-center">
-            <Plane className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src="/tma-logo.svg" alt="TMA" className="h-10 w-10 rounded-xl" />
           <div>
             <h1 className="text-lg font-bold text-foreground">TMA Contracts</h1>
             <p className="text-xs text-muted-foreground">Contract Management</p>

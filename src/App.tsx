@@ -10,6 +10,7 @@ import { initializeData } from "@/lib/excelDataService";
 import Index from "./pages/Index";
 import ContractsPage from "./pages/Contracts";
 import SettingsPage from "./pages/Settings";
+import AssistantPage from "./pages/Assistant";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ function AppLayout() {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/contracts" element={<ContractsPage />} />
+              <Route path="/assistant" element={<AssistantPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

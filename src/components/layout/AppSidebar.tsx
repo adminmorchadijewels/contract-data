@@ -1,4 +1,4 @@
-import { Building2, FileText, Settings, Plane, Sun, Moon } from "lucide-react";
+import { Building2, FileText, Settings, Sun, Moon, Sparkles } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import {
 const navItems = [
   { title: "Resort Data", url: "/", icon: Building2 },
   { title: "Contracts", url: "/contracts", icon: FileText },
+  { title: "AI Assistant", url: "/assistant", icon: Sparkles },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -25,9 +26,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border">
       <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
-        <div className="h-9 w-9 rounded-lg btn-gradient-primary flex items-center justify-center shrink-0">
-          <Plane className="h-4 w-4 text-primary-foreground" />
-        </div>
+        <img src="/tma-logo.svg" alt="TMA" className="h-9 w-9 rounded-lg shrink-0" />
         <div className="overflow-hidden">
           <h1 className="text-sm font-bold text-sidebar-foreground truncate">TMA Contracts</h1>
           <p className="text-xs text-muted-foreground truncate">Contract Management</p>
