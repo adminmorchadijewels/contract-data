@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { Settings as SettingsIcon, Plus, X } from "lucide-react";
+import { Settings as SettingsIcon, Plus, X, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableSettingsModal } from "@/components/settings/TableSettingsModal";
 import { selectAll, insertRow, deleteRow } from "@/lib/excelDataService";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/lib/RoleContext";
 
 export default function SettingsPage() {
   const [showTableSettings, setShowTableSettings] = useState(false);
   const [newAtoll, setNewAtoll] = useState("");
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { role, canCreate, canDelete } = useRole();
 
   const { data: atolls } = useQuery({
     queryKey: ["atolls"],
@@ -61,31 +63,35 @@ export default function SettingsPage() {
         <div>
           <h3 className="text-lg font-semibold text-foreground">Atoll Management</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage the list of atolls available in the Resort Data dropdown.
+            {role === "Viewer" ? "View the list of atolls available in the Resort Data dropdown." : "Manage the list of atolls available in the Resort Data dropdown."}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Enter atoll name..."
-            value={newAtoll}
-            onChange={(e) => setNewAtoll(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddAtoll()}
-            className="max-w-xs"
-          />
-          <Button onClick={handleAddAtoll} className="btn-gradient-primary" disabled={!newAtoll.trim()}>
-            <Plus className="h-4 w-4 mr-2" /> Add
-          </Button>
-        </div>
+        {canCreate && (
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter atoll name..."
+              value={newAtoll}
+              onChange={(e) => setNewAtoll(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddAtoll()}
+              className="max-w-xs"
+            />
+            <Button onClick={handleAddAtoll} className="btn-gradient-primary" disabled={!newAtoll.trim()}>
+              <Plus className="h-4 w-4 mr-2" /> Add
+            </Button>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2 mt-2">
           {atolls?.map((atoll: any) => (
             <span key={atoll.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-sm text-foreground">
               {atoll.name}
-              <button
-                onClick={() => handleDeleteAtoll(atoll.id, atoll.name)}
-                className="text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              {canDelete && (
+                <button
+                  onClick={() => handleDeleteAtoll(atoll.id, atoll.name)}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </span>
           ))}
           {(!atolls || atolls.length === 0) && (

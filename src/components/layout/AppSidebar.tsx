@@ -1,6 +1,7 @@
-import { Building2, FileText, Settings, Sun, Moon, Sparkles } from "lucide-react";
+import { Building2, FileText, Settings, Sun, Moon, Sparkles, Shield, PenLine, Eye } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +13,7 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import { useRole, type Role } from "@/lib/RoleContext";
 
 const navItems = [
   { title: "Resort Data", url: "/", icon: Building2 },
@@ -20,8 +22,16 @@ const navItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
+const roleConfig = {
+  Admin: { icon: Shield, color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/30" },
+  Editor: { icon: PenLine, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30" },
+  Viewer: { icon: Eye, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
+};
+
 export function AppSidebar() {
   const toggleDark = () => document.documentElement.classList.toggle("dark");
+  const { role, setRole } = useRole();
+  const config = roleConfig[role];
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -59,7 +69,41 @@ export function AppSidebar() {
 
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-3">
+      <SidebarFooter className="border-t border-sidebar-border p-3 space-y-3">
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Access Role</span>
+          <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+            <SelectTrigger className={`h-9 text-xs font-medium ${config.bg} ${config.border} border`}>
+              <div className="flex items-center gap-2">
+                <config.icon className={`h-3.5 w-3.5 ${config.color}`} />
+                <SelectValue />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Admin">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-3.5 w-3.5 text-red-500" />
+                  <span>Admin</span>
+                  <span className="text-[10px] text-muted-foreground ml-1">Full access</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="Editor">
+                <div className="flex items-center gap-2">
+                  <PenLine className="h-3.5 w-3.5 text-blue-500" />
+                  <span>Editor</span>
+                  <span className="text-[10px] text-muted-foreground ml-1">No delete</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="Viewer">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Viewer</span>
+                  <span className="text-[10px] text-muted-foreground ml-1">Read only</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" onClick={toggleDark} className="rounded-lg h-8 w-8">
             <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

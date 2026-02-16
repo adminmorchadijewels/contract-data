@@ -14,6 +14,7 @@ import { KPICards } from "./KPICards";
 import { ContractForm } from "./ContractForm";
 import { ContractDetailModal } from "./ContractDetailModal";
 import { exportContractData } from "@/lib/excelDataService";
+import { useRole } from "@/lib/RoleContext";
 
 function getStatus(start: string, end: string) {
   const today = new Date();
@@ -39,6 +40,7 @@ interface ContractGroup {
 export function ContractTable() {
   const { data: contracts, isLoading, deleteMutation } = useContracts();
   const { getVisibleColumns } = useTableSettings();
+  const { canCreate, canEdit, canDelete } = useRole();
   const columns = getVisibleColumns("contracts");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -186,9 +188,11 @@ export function ContractTable() {
         <Button variant="outline" className="rounded-lg" onClick={exportContractData}>
           <Download className="h-4 w-4 mr-2" /> Export
         </Button>
-        <Button className="btn-gradient-primary rounded-lg" onClick={() => { setEditContract(null); setShowForm(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Contract
-        </Button>
+        {canCreate && (
+          <Button className="btn-gradient-primary rounded-lg" onClick={() => { setEditContract(null); setShowForm(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Contract
+          </Button>
+        )}
       </div>
 
       <div className="glass-card overflow-hidden">
@@ -199,7 +203,7 @@ export function ContractTable() {
               {columns.map((col) => (
                 <TableHead key={col.key} className="font-semibold">{col.label}</TableHead>
               ))}
-              <TableHead className="font-semibold w-24">Actions</TableHead>
+              {(canEdit || canDelete) && <TableHead className="font-semibold w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -230,14 +234,16 @@ export function ContractTable() {
                       {columns.map((col) => (
                         <TableCell key={col.key}>{getParentCellValue(group, col.key)}</TableCell>
                       ))}
-                      <TableCell>
-                        {!hasSubs && (
-                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(group.subContracts[0].id)}><Eye className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(group.subContracts[0])}><Trash2 className="h-4 w-4" /></Button>
-                          </div>
-                        )}
-                      </TableCell>
+                      {(canEdit || canDelete) && (
+                        <TableCell>
+                          {!hasSubs && (
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(group.subContracts[0].id)}><Eye className="h-4 w-4" /></Button>
+                              {canDelete && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(group.subContracts[0])}><Trash2 className="h-4 w-4" /></Button>}
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
 
                     {/* Expanded sub-contract rows */}
@@ -253,12 +259,14 @@ export function ContractTable() {
                             {getSubCellValue(sub, col.key)}
                           </TableCell>
                         ))}
-                        <TableCell>
-                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(sub.id)}><Eye className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(sub)}><Trash2 className="h-4 w-4" /></Button>
-                          </div>
-                        </TableCell>
+                        {(canEdit || canDelete) && (
+                          <TableCell>
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(sub.id)}><Eye className="h-4 w-4" /></Button>
+                              {canDelete && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(sub)}><Trash2 className="h-4 w-4" /></Button>}
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </>
@@ -270,7 +278,7 @@ export function ContractTable() {
       </div>
 
       <ContractForm open={showForm} onClose={() => { setShowForm(false); setEditContract(null); }} contract={editContract} />
-      <ContractDetailModal contractId={viewContractId} onClose={() => setViewContractId(null)} onEdit={handleEditFromModal} />
+      <ContractDetailModal contractId={viewContractId} onClose={() => setViewContractId(null)} onEdit={canEdit ? handleEditFromModal : undefined} />
 
       <AlertDialog open={!!deleteContract} onOpenChange={() => setDeleteContract(null)}>
         <AlertDialogContent>

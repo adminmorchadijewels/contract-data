@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useTableSettings } from "@/hooks/useTableSettings";
+import { useRole } from "@/lib/RoleContext";
 import { CompanyForm } from "./CompanyForm";
 import { CompanyDeleteDialog } from "./CompanyDeleteDialog";
 import { exportResortData } from "@/lib/excelDataService";
@@ -15,6 +16,7 @@ import { exportResortData } from "@/lib/excelDataService";
 export function CompanyTable() {
   const { data: companies, isLoading } = useCompanies();
   const { getVisibleColumns } = useTableSettings();
+  const { canCreate, canEdit, canDelete } = useRole();
   const columns = getVisibleColumns("companies");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
@@ -136,9 +138,11 @@ export function CompanyTable() {
           <Button variant="outline" className="rounded-lg" onClick={exportResortData}>
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
-          <Button className="btn-gradient-primary rounded-lg" onClick={() => { setEditCompany(null); setShowForm(true); }}>
-            <Plus className="h-4 w-4 mr-2" /> Add Company
-          </Button>
+          {canCreate && (
+            <Button className="btn-gradient-primary rounded-lg" onClick={() => { setEditCompany(null); setShowForm(true); }}>
+              <Plus className="h-4 w-4 mr-2" /> Add Company
+            </Button>
+          )}
         </div>
       </div>
 
@@ -173,7 +177,7 @@ export function CompanyTable() {
                   </div>
                 </TableHead>
               ))}
-              <TableHead className="text-muted-foreground font-semibold w-24">Actions</TableHead>
+              {(canEdit || canDelete) && <TableHead className="text-muted-foreground font-semibold w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -191,12 +195,14 @@ export function CompanyTable() {
                       {getCellValue(company, col.key)}
                     </TableCell>
                   ))}
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditCompany(company); setShowForm(true); }}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteCompany(company)}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  </TableCell>
+                  {(canEdit || canDelete) && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditCompany(company); setShowForm(true); }}><Pencil className="h-4 w-4" /></Button>}
+                        {canDelete && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteCompany(company)}><Trash2 className="h-4 w-4" /></Button>}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}

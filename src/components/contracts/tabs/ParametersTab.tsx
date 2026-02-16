@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { insertRow, updateRow, deleteRow, type TableName } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/lib/RoleContext";
 
 interface Props { contract: any; }
 
@@ -23,6 +24,7 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { canCreate, canEdit, canDelete } = useRole();
   const [showForm, setShowForm] = useState(false);
   const [editRow, setEditRow] = useState<any>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -73,19 +75,21 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
       </AccordionTrigger>
       <AccordionContent>
         <div className="space-y-3">
-          <div className="flex justify-end">
-            <Button size="sm" className="btn-gradient-primary rounded-lg" onClick={openAdd}><Plus className="h-3 w-3 mr-1" /> Add Row</Button>
-          </div>
+          {canCreate && (
+            <div className="flex justify-end">
+              <Button size="sm" className="btn-gradient-primary rounded-lg" onClick={openAdd}><Plus className="h-3 w-3 mr-1" /> Add Row</Button>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow className="border-border/30 hover:bg-transparent">
                 {fields.map((f) => <TableHead key={f.key}>{f.label}</TableHead>)}
-                <TableHead className="w-20">Actions</TableHead>
+                {(canEdit || canDelete) && <TableHead className="w-20">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.length === 0 ? (
-                <TableRow><TableCell colSpan={fields.length + 1} className="text-center py-6 text-muted-foreground">No data.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={fields.length + (canEdit || canDelete ? 1 : 0)} className="text-center py-6 text-muted-foreground">No data.</TableCell></TableRow>
               ) : data.map((row: any) => (
                 <TableRow key={row.id} className="data-table-row">
                   {fields.map((f) => (
@@ -98,12 +102,14 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
                       ) : (row[f.key]?.toString() || "—")}
                     </TableCell>
                   ))}
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3 w-3" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
-                    </div>
-                  </TableCell>
+                  {(canEdit || canDelete) && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3 w-3" /></Button>}
+                        {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -135,6 +141,7 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
 function AgeSection({ data, contractId, subContractId }: { data: any[]; contractId: string; subContractId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { canEdit } = useRole();
   const [editRow, setEditRow] = useState<any>(null);
   const [formData, setFormData] = useState({ min_age: "", max_age: "" });
 
@@ -166,18 +173,19 @@ function AgeSection({ data, contractId, subContractId }: { data: any[]; contract
         <Table>
           <TableHeader>
             <TableRow className="border-border/30 hover:bg-transparent">
-              <TableHead>Type</TableHead><TableHead>Min Age</TableHead><TableHead>Max Age</TableHead><TableHead className="w-16">Actions</TableHead>
+              <TableHead>Type</TableHead><TableHead>Min Age</TableHead><TableHead>Max Age</TableHead>
+              {canEdit && <TableHead className="w-16">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No age data.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={canEdit ? 4 : 3} className="text-center py-6 text-muted-foreground">No age data.</TableCell></TableRow>
             ) : data.map((row: any) => (
               <TableRow key={row.id} className="data-table-row">
                 <TableCell>{row.type}</TableCell>
                 <TableCell>{row.min_age}</TableCell>
                 <TableCell>{row.max_age ?? "—"}</TableCell>
-                <TableCell><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3 w-3" /></Button></TableCell>
+                {canEdit && <TableCell><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3 w-3" /></Button></TableCell>}
               </TableRow>
             ))}
           </TableBody>
@@ -203,6 +211,7 @@ function AgeSection({ data, contractId, subContractId }: { data: any[]; contract
 function AddonsSection({ data, contractId, subContractId }: { data: any[]; contractId: string; subContractId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { canCreate, canEdit, canDelete } = useRole();
   const [showForm, setShowForm] = useState(false);
   const [editRow, setEditRow] = useState<any>(null);
   const [formData, setFormData] = useState({ sub_category: "Dedicated Vehicle", type: "", value: "", remark: "" });
@@ -227,16 +236,21 @@ function AddonsSection({ data, contractId, subContractId }: { data: any[]; contr
       </AccordionTrigger>
       <AccordionContent>
         <div className="space-y-3">
-          <div className="flex justify-end"><Button size="sm" className="btn-gradient-primary rounded-lg" onClick={openAdd}><Plus className="h-3 w-3 mr-1" /> Add Row</Button></div>
+          {canCreate && <div className="flex justify-end"><Button size="sm" className="btn-gradient-primary rounded-lg" onClick={openAdd}><Plus className="h-3 w-3 mr-1" /> Add Row</Button></div>}
           <Table>
-            <TableHeader><TableRow className="border-border/30 hover:bg-transparent"><TableHead>Sub-Category</TableHead><TableHead>Type</TableHead><TableHead>Value (USD)</TableHead><TableHead>Remark</TableHead><TableHead className="w-20">Actions</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow className="border-border/30 hover:bg-transparent"><TableHead>Sub-Category</TableHead><TableHead>Type</TableHead><TableHead>Value (USD)</TableHead><TableHead>Remark</TableHead>{(canEdit || canDelete) && <TableHead className="w-20">Actions</TableHead>}</TableRow></TableHeader>
             <TableBody>
-              {data.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No data.</TableCell></TableRow>
+              {data.length === 0 ? <TableRow><TableCell colSpan={canEdit || canDelete ? 5 : 4} className="text-center py-6 text-muted-foreground">No data.</TableCell></TableRow>
               : data.map((row: any) => (
                 <TableRow key={row.id} className="data-table-row">
                   <TableCell>{row.sub_category}</TableCell><TableCell>{row.type}</TableCell><TableCell>${row.value?.toFixed(2)}</TableCell>
                   <TableCell>{row.remark || "—"}</TableCell>
-                  <TableCell><div className="flex gap-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3 w-3" /></Button><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button></div></TableCell>
+                  {(canEdit || canDelete) && (
+                    <TableCell><div className="flex gap-1">
+                      {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3 w-3" /></Button>}
+                      {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>}
+                    </div></TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -262,6 +276,7 @@ function AddonsSection({ data, contractId, subContractId }: { data: any[]; contr
 function InsuranceSection({ data, contractId, subContractId }: { data: any[]; contractId: string; subContractId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { canEdit } = useRole();
   const insurance = data[0];
   const [included, setIncluded] = useState(insurance?.value === "Yes");
   const [remark, setRemark] = useState(insurance?.remark || "");
@@ -283,11 +298,11 @@ function InsuranceSection({ data, contractId, subContractId }: { data: any[]; co
         <div className="glass-card p-4 space-y-4">
           <div className="flex items-center gap-3">
             <Label>Insurance cover included</Label>
-            <Switch checked={included} onCheckedChange={setIncluded} />
+            <Switch checked={included} onCheckedChange={setIncluded} disabled={!canEdit} />
             <span className="text-sm font-medium">{included ? "Yes" : "No"}</span>
           </div>
-          <div><Label>Remark</Label><Input value={remark} onChange={(e) => setRemark(e.target.value)} /></div>
-          <div className="flex justify-end"><Button className="btn-gradient-primary" onClick={handleSave}>Save</Button></div>
+          <div><Label>Remark</Label><Input value={remark} onChange={(e) => setRemark(e.target.value)} disabled={!canEdit} /></div>
+          {canEdit && <div className="flex justify-end"><Button className="btn-gradient-primary" onClick={handleSave}>Save</Button></div>}
         </div>
       </AccordionContent>
     </AccordionItem>
@@ -297,6 +312,7 @@ function InsuranceSection({ data, contractId, subContractId }: { data: any[]; co
 function GovChargesSection({ data, contractId, subContractId }: { data: any[]; contractId: string; subContractId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { canEdit } = useRole();
   const charge = data[0];
   const [value, setValue] = useState(charge?.value?.toString() || "3.5");
   const [remark, setRemark] = useState(charge?.remark || "Return per pax excluding GST");
@@ -317,10 +333,10 @@ function GovChargesSection({ data, contractId, subContractId }: { data: any[]; c
       <AccordionContent>
         <div className="glass-card p-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Value (USD)</Label><Input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} /></div>
-            <div><Label>Remark</Label><Input value={remark} onChange={(e) => setRemark(e.target.value)} /></div>
+            <div><Label>Value (USD)</Label><Input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} disabled={!canEdit} /></div>
+            <div><Label>Remark</Label><Input value={remark} onChange={(e) => setRemark(e.target.value)} disabled={!canEdit} /></div>
           </div>
-          <div className="flex justify-end"><Button className="btn-gradient-primary" onClick={handleSave}>Save</Button></div>
+          {canEdit && <div className="flex justify-end"><Button className="btn-gradient-primary" onClick={handleSave}>Save</Button></div>}
         </div>
       </AccordionContent>
     </AccordionItem>

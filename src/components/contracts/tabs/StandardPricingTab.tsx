@@ -11,6 +11,7 @@ import { insertRow, updateRow, deleteRow } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/lib/RoleContext";
 import { format } from "date-fns";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -22,6 +23,7 @@ export function StandardPricingTab({ contract }: Props) {
   const resorts = companies?.filter((c) => c.type === "Resort") || [];
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { canCreate, canEdit, canDelete } = useRole();
   const [showForm, setShowForm] = useState(false);
   const [editRow, setEditRow] = useState<any>(null);
   const pricing = contract.pricing_standard || [];
@@ -101,9 +103,11 @@ export function StandardPricingTab({ contract }: Props) {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex justify-end">
-        <Button className="btn-gradient-primary rounded-lg" onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add Pricing Row</Button>
-      </div>
+      {canCreate && (
+        <div className="flex justify-end">
+          <Button className="btn-gradient-primary rounded-lg" onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add Pricing Row</Button>
+        </div>
+      )}
       <div className="glass-card overflow-hidden">
         <Table>
           <TableHeader>
@@ -116,7 +120,7 @@ export function StandardPricingTab({ contract }: Props) {
               <TableHead>Return (USD)</TableHead>
               <TableHead>One Way (USD)</TableHead>
               <TableHead>Period</TableHead>
-              <TableHead className="w-20">Actions</TableHead>
+              {(canEdit || canDelete) && <TableHead className="w-20">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -132,12 +136,14 @@ export function StandardPricingTab({ contract }: Props) {
                 <TableCell>${row.return_fare_usd?.toFixed(2) || "—"}</TableCell>
                 <TableCell>${row.one_way_fare_usd?.toFixed(2) || "—"}</TableCell>
                 <TableCell className="text-xs">{row.start_date && row.end_date ? `${format(new Date(row.start_date), "dd MMM")} - ${format(new Date(row.end_date), "dd MMM yyyy")}` : "—"}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3 w-3" /></Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>
-                  </div>
-                </TableCell>
+                {(canEdit || canDelete) && (
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3 w-3" /></Button>}
+                      {canDelete && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(row.id)}><Trash2 className="h-3 w-3" /></Button>}
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
