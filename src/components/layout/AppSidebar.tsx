@@ -75,8 +75,8 @@ export function AppSidebar() {
           <Select value={role} onValueChange={(v) => setRole(v as Role)}>
             <SelectTrigger className={`h-9 text-xs font-medium ${config.bg} ${config.border} border`}>
               <div className="flex items-center gap-2">
-                <config.icon className={`h-3.5 w-3.5 ${config.color}`} />
-                <SelectValue />
+                <config.icon className={`h-3.5 w-3.5 shrink-0 ${config.color}`} />
+                <span>{role}</span>
               </div>
             </SelectTrigger>
             <SelectContent>
