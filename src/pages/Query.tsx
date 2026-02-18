@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { Database, Play, Download, Clock, TableIcon, ChevronRight, Copy, Check, RotateCcw, Info } from "lucide-react";
+import { Database, Play, Download, Clock, TableIcon, ChevronRight, Copy, Check, RotateCcw, Info, Wand2, ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { executeQuery, getTableNames, getTableColumns, type QueryResult } from "@/lib/sqlEngine";
+import { generateSQL } from "@/lib/nlToSql";
 import * as XLSX from "xlsx";
 
 const EXAMPLE_QUERIES = [
@@ -35,6 +36,28 @@ export default function QueryPage() {
 
   const [expandedTable, setExpandedTable] = useState<string | null>(null);
 
+  // Query Guide state
+  const [nlInput, setNlInput] = useState("");
+  const [nlResult, setNlResult] = useState<{ sql: string; explanation: string } | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
+  const nlInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGenerate = useCallback(() => {
+    const trimmed = nlInput.trim();
+    if (!trimmed) return;
+    const result = generateSQL(trimmed);
+    setNlResult(result);
+  }, [nlInput]);
+
+  const handleUseQuery = useCallback(() => {
+    if (!nlResult?.sql) return;
+    setSql(nlResult.sql);
+    setNlResult(null);
+    setNlInput("");
+    setShowGuide(false);
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  }, [nlResult]);
+
   const runQuery = useCallback(() => {
     const trimmed = sql.trim();
     if (!trimmed) return;
@@ -44,6 +67,21 @@ export default function QueryPage() {
       setHistory(prev => [{ sql: trimmed, rowCount: r.rowCount, ms: r.executionMs }, ...prev].slice(0, 20));
     }
   }, [sql]);
+
+  const useAndRun = useCallback(() => {
+    if (!nlResult?.sql) return;
+    const generatedSql = nlResult.sql;
+    setSql(generatedSql);
+    setNlResult(null);
+    setNlInput("");
+    setShowGuide(false);
+    // Execute directly with the generated SQL (not from state)
+    const r = executeQuery(generatedSql);
+    setResult(r);
+    if (!r.error) {
+      setHistory(prev => [{ sql: generatedSql, rowCount: r.rowCount, ms: r.executionMs }, ...prev].slice(0, 20));
+    }
+  }, [nlResult]);
 
   // Ctrl+Enter to run
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -162,6 +200,88 @@ export default function QueryPage() {
 
         {/* Right panel: Editor + Results */}
         <div className="lg:col-span-3 space-y-4">
+          {/* Query Guide */}
+          {!showGuide ? (
+            <button
+              onClick={() => { setShowGuide(true); setTimeout(() => nlInputRef.current?.focus(), 50); }}
+              className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors text-left group"
+            >
+              <Wand2 className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                Describe what you need in plain English and get the SQL generated...
+              </span>
+            </button>
+          ) : (
+            <div className="glass-card p-4 space-y-3 border-primary/20">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-primary" />
+                  Query Guide
+                </h3>
+                <button onClick={() => { setShowGuide(false); setNlResult(null); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={nlInputRef}
+                  value={nlInput}
+                  onChange={e => setNlInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
+                  placeholder="e.g. Show all resorts in Male atoll, How many contracts per type, Active contracts expiring soon..."
+                  className="flex-1 text-sm bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
+                />
+                <Button className="btn-gradient-primary" size="sm" onClick={handleGenerate} disabled={!nlInput.trim()}>
+                  <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Generate
+                </Button>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {[
+                  "Show all resorts",
+                  "Active contracts expiring soon",
+                  "How many contracts per type",
+                  "Contracts with resort names",
+                  "Top 10 most expensive standard fares",
+                  "Staff special pricing",
+                  "All baggage rules",
+                  "Expired contracts",
+                ].map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setNlInput(suggestion); const r = generateSQL(suggestion); setNlResult(r); }}
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+              {nlResult && (
+                <div className="space-y-2">
+                  {nlResult.sql ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">{nlResult.explanation}</p>
+                      <div className="relative">
+                        <pre className="text-sm font-mono bg-secondary/70 rounded-lg p-3 text-foreground overflow-x-auto whitespace-pre-wrap">{nlResult.sql}</pre>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => { setSql(nlResult.sql); setNlResult(null); }}>
+                          Copy to Editor
+                        </Button>
+                        <Button className="btn-gradient-primary" size="sm" onClick={useAndRun}>
+                          <ArrowRight className="h-3.5 w-3.5 mr-1.5" /> Use & Run
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-lg bg-warning/10 border border-warning/20 p-3">
+                      <p className="text-sm text-warning">{nlResult.explanation}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* SQL Editor */}
           <div className="glass-card p-4 space-y-3">
             <div className="flex items-center justify-between">
