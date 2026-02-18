@@ -15,6 +15,8 @@ import { ContractForm } from "./ContractForm";
 import { ContractDetailModal } from "./ContractDetailModal";
 import { exportContractData } from "@/lib/excelDataService";
 import { useRole } from "@/lib/RoleContext";
+import { motion, AnimatePresence } from "framer-motion";
+import { ScrollReveal } from "@/components/ui/motion";
 
 function getStatus(start: string, end: string) {
   const today = new Date();
@@ -159,10 +161,15 @@ export function ContractTable() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       <KPICards contracts={contracts} />
 
-      <div className="flex flex-wrap gap-3 items-center">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 20 }}
+        className="flex flex-wrap gap-3 items-center"
+      >
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search contracts..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
@@ -193,89 +200,117 @@ export function ContractTable() {
             <Plus className="h-4 w-4 mr-2" /> Add Contract
           </Button>
         )}
-      </div>
+      </motion.div>
 
-      <div className="glass-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border/30 hover:bg-transparent">
-              <TableHead className="font-semibold w-10"></TableHead>
-              {columns.map((col) => (
-                <TableHead key={col.key} className="font-semibold">{col.label}</TableHead>
-              ))}
-              {(canEdit || canDelete) && <TableHead className="font-semibold w-24">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={columns.length + 2}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-              ))
-            ) : grouped.length === 0 ? (
-              <TableRow><TableCell colSpan={columns.length + 2} className="text-center py-12 text-muted-foreground">No contracts found.</TableCell></TableRow>
-            ) : (
-              grouped.map((group) => {
-                const isExpanded = expandedGroups.has(group.contractId);
-                const hasSubs = group.subContracts.length > 1;
+      <ScrollReveal delay={0.1}>
+        <div className="glass-card overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border/30 hover:bg-transparent">
+                <TableHead className="font-semibold w-10"></TableHead>
+                {columns.map((col) => (
+                  <TableHead key={col.key} className="font-semibold">{col.label}</TableHead>
+                ))}
+                {(canEdit || canDelete) && <TableHead className="font-semibold w-24">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}><TableCell colSpan={columns.length + 2}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                ))
+              ) : grouped.length === 0 ? (
+                <TableRow><TableCell colSpan={columns.length + 2} className="text-center py-12 text-muted-foreground">No contracts found.</TableCell></TableRow>
+              ) : (
+                grouped.map((group, idx) => {
+                  const isExpanded = expandedGroups.has(group.contractId);
+                  const hasSubs = group.subContracts.length > 1;
 
-                return (
-                  <>
-                    {/* Parent row */}
-                    <TableRow
-                      key={group.contractId}
-                      className="data-table-row cursor-pointer hover:bg-muted/50"
-                      onClick={() => hasSubs ? toggleGroup(group.contractId) : setViewContractId(group.subContracts[0].id)}
-                    >
-                      <TableCell className="w-10 px-3">
-                        {hasSubs ? (
-                          isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        ) : <span className="w-4 inline-block" />}
-                      </TableCell>
-                      {columns.map((col) => (
-                        <TableCell key={col.key}>{getParentCellValue(group, col.key)}</TableCell>
-                      ))}
-                      {(canEdit || canDelete) && (
-                        <TableCell>
-                          {!hasSubs && (
-                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(group.subContracts[0].id)}><Eye className="h-4 w-4" /></Button>
-                              {canDelete && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(group.subContracts[0])}><Trash2 className="h-4 w-4" /></Button>}
-                            </div>
-                          )}
-                        </TableCell>
-                      )}
-                    </TableRow>
-
-                    {/* Expanded sub-contract rows */}
-                    {hasSubs && isExpanded && group.subContracts.map((sub) => (
-                      <TableRow
-                        key={sub.id}
-                        className="data-table-row cursor-pointer bg-muted/30 hover:bg-muted/50"
-                        onClick={() => setViewContractId(sub.id)}
+                  return (
+                    <>
+                      {/* Parent row */}
+                      <motion.tr
+                        key={group.contractId}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: Math.min(idx * 0.02, 0.3), type: "spring", stiffness: 200, damping: 20 }}
+                        className="data-table-row cursor-pointer hover:bg-muted/50 border-b border-border/30"
+                        onClick={() => hasSubs ? toggleGroup(group.contractId) : setViewContractId(group.subContracts[0].id)}
                       >
-                        <TableCell className="w-10 px-3" />
-                        {columns.map((col, colIdx) => (
-                          <TableCell key={col.key} className={colIdx === 0 ? "pl-8" : ""}>
-                            {getSubCellValue(sub, col.key)}
-                          </TableCell>
+                        <TableCell className="w-10 px-3">
+                          {hasSubs ? (
+                            <motion.div
+                              animate={{ rotate: isExpanded ? 90 : 0 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            >
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </motion.div>
+                          ) : <span className="w-4 inline-block" />}
+                        </TableCell>
+                        {columns.map((col) => (
+                          <TableCell key={col.key}>{getParentCellValue(group, col.key)}</TableCell>
                         ))}
                         {(canEdit || canDelete) && (
                           <TableCell>
-                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(sub.id)}><Eye className="h-4 w-4" /></Button>
-                              {canDelete && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(sub)}><Trash2 className="h-4 w-4" /></Button>}
-                            </div>
+                            {!hasSubs && (
+                              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(group.subContracts[0].id)}><Eye className="h-4 w-4" /></Button>
+                                </motion.div>
+                                {canDelete && (
+                                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(group.subContracts[0])}><Trash2 className="h-4 w-4" /></Button>
+                                  </motion.div>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                         )}
-                      </TableRow>
-                    ))}
-                  </>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                      </motion.tr>
+
+                      {/* Expanded sub-contract rows */}
+                      <AnimatePresence>
+                        {hasSubs && isExpanded && group.subContracts.map((sub, subIdx) => (
+                          <motion.tr
+                            key={sub.id}
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ delay: subIdx * 0.03, type: "spring", stiffness: 200, damping: 20 }}
+                            className="data-table-row cursor-pointer bg-muted/30 hover:bg-muted/50 border-b border-border/30"
+                            onClick={() => setViewContractId(sub.id)}
+                          >
+                            <TableCell className="w-10 px-3" />
+                            {columns.map((col, colIdx) => (
+                              <TableCell key={col.key} className={colIdx === 0 ? "pl-8" : ""}>
+                                {getSubCellValue(sub, col.key)}
+                              </TableCell>
+                            ))}
+                            {(canEdit || canDelete) && (
+                              <TableCell>
+                                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewContractId(sub.id)}><Eye className="h-4 w-4" /></Button>
+                                  </motion.div>
+                                  {canDelete && (
+                                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteContract(sub)}><Trash2 className="h-4 w-4" /></Button>
+                                    </motion.div>
+                                  )}
+                                </div>
+                              </TableCell>
+                            )}
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
+                    </>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </ScrollReveal>
 
       <ContractForm open={showForm} onClose={() => { setShowForm(false); setEditContract(null); }} contract={editContract} />
       <ContractDetailModal contractId={viewContractId} onClose={() => setViewContractId(null)} onEdit={canEdit ? handleEditFromModal : undefined} />

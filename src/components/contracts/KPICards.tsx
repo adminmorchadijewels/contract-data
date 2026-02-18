@@ -1,9 +1,28 @@
 import { FileText, CheckCircle, AlertTriangle, Clock, TrendingUp, TrendingDown } from "lucide-react";
 import { useMemo } from "react";
+import { motion } from "framer-motion";
+import { AnimatedCounter, HoverCard, PulseBadge } from "@/components/ui/motion";
 
 interface KPICardsProps {
   contracts: any[] | undefined;
 }
+
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: "spring", stiffness: 200, damping: 18 },
+  },
+};
 
 export function KPICards({ contracts }: KPICardsProps) {
   const stats = useMemo(() => {
@@ -34,6 +53,7 @@ export function KPICards({ contracts }: KPICardsProps) {
       iconBg: "bg-blue-100 dark:bg-blue-900/50",
       iconColor: "text-blue-600 dark:text-blue-400",
       trendColor: "text-emerald-600 dark:text-emerald-400",
+      pulse: false,
     },
     {
       label: "Active Contracts",
@@ -44,6 +64,7 @@ export function KPICards({ contracts }: KPICardsProps) {
       iconBg: "bg-emerald-100 dark:bg-emerald-900/50",
       iconColor: "text-emerald-600 dark:text-emerald-400",
       trendColor: "text-emerald-600 dark:text-emerald-400",
+      pulse: false,
     },
     {
       label: "Expiring Soon",
@@ -54,6 +75,7 @@ export function KPICards({ contracts }: KPICardsProps) {
       iconBg: "bg-orange-100 dark:bg-orange-900/50",
       iconColor: "text-orange-600 dark:text-orange-400",
       trendColor: "text-rose-600 dark:text-rose-400",
+      pulse: stats.expiring > 0,
     },
     {
       label: "Expired Contracts",
@@ -64,40 +86,47 @@ export function KPICards({ contracts }: KPICardsProps) {
       iconBg: "bg-sky-100 dark:bg-sky-900/50",
       iconColor: "text-sky-600 dark:text-sky-400",
       trendColor: "text-emerald-600 dark:text-emerald-400",
+      pulse: false,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+    >
       {cards.map((card) => (
-        <div
-          key={card.label}
-          className={`rounded-xl p-5 transition-all duration-200 hover:shadow-md ${card.bg}`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {card.label}
-            </span>
-            <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${card.iconBg}`}>
-              <card.icon className={`h-[18px] w-[18px] ${card.iconColor}`} />
+        <motion.div key={card.label} variants={cardVariants}>
+          <HoverCard className={`rounded-xl p-5 ${card.bg}`}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {card.label}
+              </span>
+              <PulseBadge pulse={card.pulse}>
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${card.iconBg}`}>
+                  <card.icon className={`h-[18px] w-[18px] ${card.iconColor}`} />
+                </div>
+              </PulseBadge>
             </div>
-          </div>
-          <div className="text-3xl font-bold text-foreground mb-2">
-            {card.value}
-          </div>
-          <div className="flex items-center gap-1.5">
-            {card.trend.up ? (
-              <TrendingUp className={`h-3.5 w-3.5 ${card.trendColor}`} />
-            ) : (
-              <TrendingDown className={`h-3.5 w-3.5 ${card.trendColor}`} />
-            )}
-            <span className={`text-xs font-medium ${card.trendColor}`}>
-              {card.trend.up ? "+" : "-"}{card.trend.value}%
-            </span>
-            <span className="text-xs text-muted-foreground">from last month</span>
-          </div>
-        </div>
+            <div className="text-3xl font-bold text-foreground mb-2">
+              <AnimatedCounter value={card.value} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              {card.trend.up ? (
+                <TrendingUp className={`h-3.5 w-3.5 ${card.trendColor}`} />
+              ) : (
+                <TrendingDown className={`h-3.5 w-3.5 ${card.trendColor}`} />
+              )}
+              <span className={`text-xs font-medium ${card.trendColor}`}>
+                {card.trend.up ? "+" : "-"}{card.trend.value}%
+              </span>
+              <span className="text-xs text-muted-foreground">from last month</span>
+            </div>
+          </HoverCard>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }

@@ -1,5 +1,5 @@
 import { Building2, FileText, Settings, Sun, Moon, Sparkles, Shield, PenLine, Eye, Database } from "lucide-react";
-import { NavLink } from "@/components/NavLink";
+import { NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -14,6 +14,8 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { useRole, type Role } from "@/lib/RoleContext";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { title: "Resort Data", url: "/", icon: Building2 },
@@ -29,15 +31,35 @@ const roleConfig = {
   Viewer: { icon: Eye, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
 };
 
+const navStagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
+};
+
+const navItemVariant = {
+  hidden: { opacity: 0, x: -12 },
+  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 200, damping: 18 } },
+};
+
 export function AppSidebar() {
   const toggleDark = () => document.documentElement.classList.toggle("dark");
   const { role, setRole } = useRole();
   const config = roleConfig[role];
+  const location = useLocation();
+
+  const isActive = (url: string) =>
+    url === "/" ? location.pathname === "/" : location.pathname.startsWith(url);
 
   return (
     <Sidebar className="border-r border-sidebar-border">
       <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
-        <img src="/tma-logo.svg" alt="TMA" className="h-9 w-9 rounded-lg shrink-0" />
+        <motion.img
+          src="/tma-logo.svg"
+          alt="TMA"
+          className="h-9 w-9 rounded-lg shrink-0"
+          whileHover={{ scale: 1.08, rotate: 3 }}
+          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+        />
         <div className="overflow-hidden">
           <h1 className="text-sm font-bold text-sidebar-foreground truncate">TMA Contracts</h1>
           <p className="text-xs text-muted-foreground truncate">Contract Management</p>
@@ -48,26 +70,53 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <motion.div
+              variants={navStagger}
+              initial="hidden"
+              animate="visible"
+            >
+              <SidebarMenu>
+                {navItems.map((item) => {
+                  const active = isActive(item.url);
+                  return (
+                    <motion.div key={item.title} variants={navItemVariant}>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            end={item.url === "/" ? true : undefined}
+                            className={cn(
+                              "relative flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                              active
+                                ? "text-sidebar-accent-foreground font-medium"
+                                : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            )}
+                          >
+                            {active && (
+                              <motion.div
+                                layoutId="sidebar-active-pill"
+                                className="absolute inset-0 bg-sidebar-accent rounded-md"
+                                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                                style={{ zIndex: -1 }}
+                              />
+                            )}
+                            <motion.div
+                              whileHover={{ scale: 1.15 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                            >
+                              <item.icon className="h-4 w-4 shrink-0" />
+                            </motion.div>
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </motion.div>
+                  );
+                })}
+              </SidebarMenu>
+            </motion.div>
           </SidebarGroupContent>
         </SidebarGroup>
-
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3 space-y-3">
@@ -106,10 +155,18 @@ export function AppSidebar() {
           </Select>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={toggleDark} className="rounded-lg h-8 w-8">
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          </Button>
+          <motion.div whileTap={{ scale: 0.9 }}>
+            <Button variant="ghost" size="icon" onClick={toggleDark} className="rounded-lg h-8 w-8 relative overflow-hidden">
+              <motion.div
+                initial={false}
+                animate={{ rotate: 0, scale: 1 }}
+                className="absolute"
+              >
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute inset-0 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              </motion.div>
+            </Button>
+          </motion.div>
         </div>
       </SidebarFooter>
     </Sidebar>
