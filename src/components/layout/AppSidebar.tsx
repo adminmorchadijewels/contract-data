@@ -1,4 +1,4 @@
-import { Building2, FileText, Settings, Sun, Moon, Sparkles, Shield, PenLine, Eye } from "lucide-react";
+import { Building2, FileText, Settings, Sun, Moon, Sparkles, Shield, PenLine, Eye, Database } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +19,7 @@ const navItems = [
   { title: "Resort Data", url: "/", icon: Building2 },
   { title: "Contracts", url: "/contracts", icon: FileText },
   { title: "AI Assistant", url: "/assistant", icon: Sparkles },
+  { title: "Query", url: "/query", icon: Database },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

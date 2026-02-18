@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import ContractsPage from "./pages/Contracts";
 import SettingsPage from "./pages/Settings";
 import AssistantPage from "./pages/Assistant";
+import QueryPage from "./pages/Query";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ function AppLayout() {
               <Route path="/" element={<Index />} />
               <Route path="/contracts" element={<ContractsPage />} />
               <Route path="/assistant" element={<AssistantPage />} />
+              <Route path="/query" element={<QueryPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
