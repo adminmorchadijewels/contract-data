@@ -1,11 +1,13 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { Database, Play, Download, Clock, TableIcon, ChevronRight, Copy, Check, RotateCcw, Info, Wand2, ArrowRight, X } from "lucide-react";
+import { Database, Play, Download, Clock, TableIcon, ChevronRight, Copy, Check, RotateCcw, Info, Wand2, ArrowRight, X, Loader2, Sparkles, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { executeQuery, getTableNames, getTableColumns, type QueryResult } from "@/lib/sqlEngine";
 import { generateSQL } from "@/lib/nlToSql";
+import { generateSQLWithOpenAI, hasOpenAIKey } from "@/lib/openaiSqlService";
+import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 
 const EXAMPLE_QUERIES = [
@@ -25,6 +27,7 @@ export default function QueryPage() {
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<{ sql: string; rowCount: number; ms: number }[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
 
   // Schema info
   const tables = useMemo(() => {
@@ -38,16 +41,47 @@ export default function QueryPage() {
 
   // Query Guide state
   const [nlInput, setNlInput] = useState("");
-  const [nlResult, setNlResult] = useState<{ sql: string; explanation: string } | null>(null);
+  const [nlResult, setNlResult] = useState<{ sql: string; explanation: string; error?: string } | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [nlLoading, setNlLoading] = useState(false);
   const nlInputRef = useRef<HTMLInputElement>(null);
+  const aiEnabled = hasOpenAIKey();
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     const trimmed = nlInput.trim();
     if (!trimmed) return;
-    const result = generateSQL(trimmed);
-    setNlResult(result);
-  }, [nlInput]);
+
+    if (aiEnabled) {
+      setNlLoading(true);
+      setNlResult(null);
+      try {
+        const result = await generateSQLWithOpenAI(trimmed);
+        setNlResult(result);
+      } finally {
+        setNlLoading(false);
+      }
+    } else {
+      const result = generateSQL(trimmed);
+      setNlResult(result);
+    }
+  }, [nlInput, aiEnabled]);
+
+  const handleSuggestionClick = useCallback(async (suggestion: string) => {
+    setNlInput(suggestion);
+    if (aiEnabled) {
+      setNlLoading(true);
+      setNlResult(null);
+      try {
+        const result = await generateSQLWithOpenAI(suggestion);
+        setNlResult(result);
+      } finally {
+        setNlLoading(false);
+      }
+    } else {
+      const r = generateSQL(suggestion);
+      setNlResult(r);
+    }
+  }, [aiEnabled]);
 
   const handleUseQuery = useCallback(() => {
     if (!nlResult?.sql) return;
@@ -210,6 +244,11 @@ export default function QueryPage() {
               <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                 Describe what you need in plain English and get the SQL generated...
               </span>
+              {aiEnabled && (
+                <Badge variant="secondary" className="ml-auto text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
+                  <Sparkles className="h-3 w-3 mr-1" /> AI Powered
+                </Badge>
+              )}
             </button>
           ) : (
             <div className="glass-card p-4 space-y-3 border-primary/20">
@@ -217,8 +256,24 @@ export default function QueryPage() {
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-primary" />
                   Query Guide
+                  {aiEnabled ? (
+                    <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
+                      <Sparkles className="h-3 w-3 mr-1" /> OpenAI
+                    </Badge>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button onClick={() => navigate("/settings")} className="inline-flex">
+                          <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-secondary/80">
+                            <Settings className="h-3 w-3 mr-1" /> Basic Mode
+                          </Badge>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Add an OpenAI key in Settings for AI-powered query generation</TooltipContent>
+                    </Tooltip>
+                  )}
                 </h3>
-                <button onClick={() => { setShowGuide(false); setNlResult(null); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={() => { setShowGuide(false); setNlResult(null); setNlLoading(false); }} className="text-muted-foreground hover:text-foreground transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -228,11 +283,19 @@ export default function QueryPage() {
                   value={nlInput}
                   onChange={e => setNlInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
-                  placeholder="e.g. Show all resorts in Male atoll, How many contracts per type, Active contracts expiring soon..."
+                  placeholder={aiEnabled
+                    ? "Ask anything about your data — AI will generate the perfect query..."
+                    : "e.g. Show all resorts in Male atoll, How many contracts per type..."
+                  }
                   className="flex-1 text-sm bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
+                  disabled={nlLoading}
                 />
-                <Button className="btn-gradient-primary" size="sm" onClick={handleGenerate} disabled={!nlInput.trim()}>
-                  <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Generate
+                <Button className="btn-gradient-primary" size="sm" onClick={handleGenerate} disabled={!nlInput.trim() || nlLoading}>
+                  {nlLoading ? (
+                    <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating...</>
+                  ) : (
+                    <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> Generate</>
+                  )}
                 </Button>
               </div>
               <div className="flex gap-1.5 flex-wrap">
@@ -248,16 +311,27 @@ export default function QueryPage() {
                 ].map((suggestion, i) => (
                   <button
                     key={i}
-                    onClick={() => { setNlInput(suggestion); const r = generateSQL(suggestion); setNlResult(r); }}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    disabled={nlLoading}
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50"
                   >
                     {suggestion}
                   </button>
                 ))}
               </div>
-              {nlResult && (
+              {nlLoading && (
+                <div className="flex items-center gap-2 py-3 justify-center">
+                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                  <span className="text-sm text-muted-foreground">OpenAI is generating your query...</span>
+                </div>
+              )}
+              {nlResult && !nlLoading && (
                 <div className="space-y-2">
-                  {nlResult.sql ? (
+                  {nlResult.error ? (
+                    <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
+                      <p className="text-sm text-destructive">{nlResult.error}</p>
+                    </div>
+                  ) : nlResult.sql ? (
                     <>
                       <p className="text-xs text-muted-foreground">{nlResult.explanation}</p>
                       <div className="relative">
