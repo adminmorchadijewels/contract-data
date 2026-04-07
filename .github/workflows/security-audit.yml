@@ -1,0 +1,50 @@
+name: Security Audit
+
+on:
+  pull_request:
+    branches: ["main", "master", "develop"]
+  push:
+    branches: ["main", "master"]
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  npm-audit:
+    name: npm audit (high + critical)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        # Use --prefer-offline to avoid unnecessary registry roundtrips.
+        # ci ensures the lock file is respected exactly.
+        run: npm ci --prefer-offline
+
+      - name: Run npm audit
+        # --audit-level=high fails the job when any HIGH or CRITICAL
+        # vulnerability is found in production dependencies.
+        # --omit=dev excludes devDependencies (build tools, test runners, etc.)
+        # so noisy dev-only advisories don't block legitimate PRs.
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Upload audit report (always)
+        if: always()
+        # Saves the full audit JSON as an artefact so you can review details
+        # even after the job fails.
+        run: npm audit --json --omit=dev > npm-audit-report.json || true
+
+      - name: Upload audit artefact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit-report.json
+          retention-days: 30

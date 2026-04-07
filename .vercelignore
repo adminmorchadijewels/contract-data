@@ -1,0 +1,47 @@
+# ── Secrets & local environment files ────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.staging
+.env.production
+
+# ── Editor / OS artefacts ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# ── Dev tooling & test output ─────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+__mocks__/
+cypress/
+playwright/
+.storybook/
+storybook-static/
+
+# ── Local data / Excel files (served from disk in dev only) ───────────────────
+# Remove the next line if you intentionally ship Excel data in the bundle.
+# public/data/
+
+# ── Build artefacts already handled by Vercel ─────────────────────────────────
+node_modules/
+dist/
+.cache/
+.turbo/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
