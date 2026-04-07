@@ -51,6 +51,7 @@ const PUBLIC_PATHS: string[] = [
   "/_vercel",      // Vercel internals
   "/favicon.ico",
   "/tma-logo.svg",
+  "/data",         // Static Excel data files fetched by initializeData()
 ];
 
 // ── Cookie parser ───────────────────────────────────────────────────────────
@@ -115,6 +116,6 @@ export default function middleware(request: Request): Response {
  */
 export const config = {
   matcher: [
-    "/((?!_vercel|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|css|js|map)$).*)",
+    "/((?!_vercel|data/|.*\\.(?:xlsx|svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|css|js|map)$).*)",
   ],
 };
