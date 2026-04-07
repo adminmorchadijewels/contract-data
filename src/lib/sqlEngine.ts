@@ -450,14 +450,15 @@ export function executeQuery(sql: string): QueryResult {
       // Build lookup map for performance
       const lookup = new Map<string, Record<string, unknown>[]>();
       for (const jr of joinData) {
-        const key = String((jr as any)[rightKey] ?? (jr as any)[leftKey] ?? "");
+        const jrRec = jr as Record<string, unknown>;
+        const key = String(jrRec[rightKey] ?? jrRec[leftKey] ?? "");
         if (!lookup.has(key)) lookup.set(key, []);
-        lookup.get(key)!.push(jr as Record<string, unknown>);
+        lookup.get(key)!.push(jrRec);
       }
 
       const joined: Record<string, unknown>[] = [];
       for (const row of rows) {
-        const key = String((row as any)[leftKey] ?? (row as any)[rightKey] ?? "");
+        const key = String(row[leftKey] ?? row[rightKey] ?? "");
         const matches = lookup.get(key);
         if (matches) {
           for (const match of matches) {
@@ -544,13 +545,13 @@ export function executeQuery(sql: string): QueryResult {
       rowCount: projectedRows.length,
       executionMs,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       columns: [],
       rows: [],
       rowCount: 0,
       executionMs: performance.now() - start,
-      error: err.message || "Unknown error",
+      error: err instanceof Error ? err.message : "Unknown error",
     };
   }
 }

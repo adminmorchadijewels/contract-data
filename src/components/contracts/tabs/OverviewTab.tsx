@@ -1,6 +1,7 @@
 import { format } from "date-fns";
+import type { ContractDetail } from "@/types";
 
-interface Props { contract: any; }
+interface Props { contract: ContractDetail; }
 
 export function OverviewTab({ contract }: Props) {
   const fields = [

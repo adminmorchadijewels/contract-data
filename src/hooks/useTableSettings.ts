@@ -50,7 +50,7 @@ export function useTableSettings() {
   });
 
   const getSettingsForTable = (tableName: string): TableSetting => {
-    const found = (settings as any[])?.find((s: any) => s.table_name === tableName);
+    const found = settings?.find((s) => s.table_name === tableName) as TableSetting | undefined;
     if (found) {
       return {
         id: found.id,

@@ -10,11 +10,12 @@ import { SpecialPricingTab } from "./tabs/SpecialPricingTab";
 import { ParametersTab } from "./tabs/ParametersTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { motion, AnimatePresence } from "framer-motion";
+import type { ContractBase } from "@/types";
 
 interface Props {
   contractId: string | null;
   onClose: () => void;
-  onEdit?: (contract: any) => void;
+  onEdit?: (contract: ContractBase) => void;
 }
 
 function getStatus(start: string, end: string) {

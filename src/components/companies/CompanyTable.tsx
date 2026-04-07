@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useTableSettings } from "@/hooks/useTableSettings";
 import { useRole } from "@/lib/RoleContext";
+import type { Company } from "@/types";
 import { CompanyForm } from "./CompanyForm";
 import { CompanyDeleteDialog } from "./CompanyDeleteDialog";
 import { exportResortData } from "@/lib/excelDataService";
@@ -32,9 +33,9 @@ export function CompanyTable() {
   const columns = getVisibleColumns("companies");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
-  const [editCompany, setEditCompany] = useState<any>(null);
+  const [editCompany, setEditCompany] = useState<Company | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [deleteCompany, setDeleteCompany] = useState<any>(null);
+  const [deleteCompany, setDeleteCompany] = useState<Company | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -67,9 +68,9 @@ export function CompanyTable() {
     });
 
     if (sortColumn) {
-      result = [...result].sort((a: any, b: any) => {
-        let aVal = a[sortColumn] ?? "";
-        let bVal = b[sortColumn] ?? "";
+      result = [...result].sort((a, b) => {
+        let aVal = a[sortColumn as keyof Company] ?? "";
+        let bVal = b[sortColumn as keyof Company] ?? "";
         if (sortColumn === "contract_count") {
           aVal = Number(aVal) || 0;
           bVal = Number(bVal) || 0;
@@ -86,7 +87,7 @@ export function CompanyTable() {
     return result;
   }, [companies, search, typeFilter, sortColumn, sortDirection]);
 
-  const getCellValue = (company: any, key: string) => {
+  const getCellValue = (company: Company, key: string) => {
     if (key === "type") {
       return (
         <Badge variant={company.type === "Group" ? "default" : "secondary"} className={company.type === "Group" ? "bg-primary/20 text-primary border-0" : "bg-success/20 text-success border-0"}>
@@ -100,7 +101,7 @@ export function CompanyTable() {
     if (key === "linked_resorts") {
       return <span className="text-muted-foreground text-sm">{company.linked_resorts}</span>;
     }
-    return company[key] || "\u2014";
+    return company[key as keyof Company] || "\u2014";
   };
 
   const SortIcon = ({ colKey }: { colKey: string }) => {

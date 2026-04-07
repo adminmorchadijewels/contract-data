@@ -89,8 +89,8 @@ export function SchemaManager() {
       });
       toast({ title: "Column added successfully" });
       resetAddColumn();
-    } catch (err: any) {
-      toast({ title: "Failed to add column", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Failed to add column", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     }
   };
 
@@ -105,8 +105,8 @@ export function SchemaManager() {
       toast({ title: "Column renamed successfully" });
       setShowRenameColumn(null);
       setRenameValue("");
-    } catch (err: any) {
-      toast({ title: "Failed to rename column", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Failed to rename column", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     }
   };
 
@@ -119,8 +119,8 @@ export function SchemaManager() {
       });
       toast({ title: "Column deleted successfully" });
       setShowDeleteConfirm(null);
-    } catch (err: any) {
-      toast({ title: "Failed to delete column", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Failed to delete column", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     }
   };
 
@@ -137,8 +137,8 @@ export function SchemaManager() {
       setNewTableName("");
       setNewTableColumns([]);
       setNewTableFKs([]);
-    } catch (err: any) {
-      toast({ title: "Failed to create table", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Failed to create table", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     }
   };
 
@@ -146,7 +146,7 @@ export function SchemaManager() {
     setNewTableColumns((prev) => [...prev, { name: "", type: "text", is_nullable: true, default_value: "" }]);
   };
 
-  const updateNewTableColumn = (index: number, field: string, value: any) => {
+  const updateNewTableColumn = (index: number, field: string, value: string | boolean) => {
     setNewTableColumns((prev) => prev.map((col, i) => (i === index ? { ...col, [field]: value } : col)));
   };
 
@@ -158,7 +158,7 @@ export function SchemaManager() {
     setNewTableFKs((prev) => [...prev, { column_name: "", ref_table: "", on_delete: "set_null" }]);
   };
 
-  const updateNewTableFK = (index: number, field: string, value: any) => {
+  const updateNewTableFK = (index: number, field: string, value: string) => {
     setNewTableFKs((prev) => prev.map((fk, i) => (i === index ? { ...fk, [field]: value } : fk)));
   };
 
@@ -490,7 +490,7 @@ export function SchemaManager() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Select value={fk.on_delete} onValueChange={(v) => updateNewTableFK(i, "on_delete", v as any)}>
+                      <Select value={fk.on_delete} onValueChange={(v) => updateNewTableFK(i, "on_delete", v)}>
                         <SelectTrigger className="w-32">
                           <SelectValue />
                         </SelectTrigger>

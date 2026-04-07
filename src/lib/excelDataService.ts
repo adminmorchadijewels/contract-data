@@ -84,16 +84,16 @@ export function selectAll<T = Record<string, unknown>>(table: TableName): T[] {
   return getTable<T>(table);
 }
 
-export function selectById<T = Record<string, unknown>>(table: TableName, id: string): T | undefined {
-  return getTable<T>(table).find((r: any) => r.id === id);
+export function selectById<T extends Record<string, unknown> = Record<string, unknown>>(table: TableName, id: string): T | undefined {
+  return getTable<T>(table).find((r) => r.id === id);
 }
 
-export function selectWhere<T = Record<string, unknown>>(
+export function selectWhere<T extends Record<string, unknown> = Record<string, unknown>>(
   table: TableName,
   field: string,
   value: unknown
 ): T[] {
-  return getTable<T>(table).filter((r: any) => r[field] === value);
+  return getTable<T>(table).filter((r) => r[field] === value);
 }
 
 export function insertRow<T = Record<string, unknown>>(
@@ -112,13 +112,13 @@ export function insertRow<T = Record<string, unknown>>(
   return record;
 }
 
-export function updateRow<T = Record<string, unknown>>(
+export function updateRow<T extends Record<string, unknown> = Record<string, unknown>>(
   table: TableName,
   id: string,
   updates: Partial<T>
 ): T | null {
   const rows = getTable<T>(table);
-  const idx = rows.findIndex((r: any) => r.id === id);
+  const idx = rows.findIndex((r) => r.id === id);
   if (idx === -1) return null;
   rows[idx] = { ...rows[idx], ...updates, updated_at: now() } as T;
   setTable(table, rows);
@@ -127,7 +127,7 @@ export function updateRow<T = Record<string, unknown>>(
 
 export function deleteRow(table: TableName, id: string): boolean {
   const rows = getTable(table);
-  const filtered = rows.filter((r: any) => r.id !== id);
+  const filtered = rows.filter((r) => r.id !== id);
   if (filtered.length === rows.length) return false;
   setTable(table, filtered);
   return true;
@@ -135,7 +135,7 @@ export function deleteRow(table: TableName, id: string): boolean {
 
 export function deleteWhere(table: TableName, field: string, value: unknown): number {
   const rows = getTable(table);
-  const filtered = rows.filter((r: any) => r[field] !== value);
+  const filtered = rows.filter((r) => r[field] !== value);
   const deleted = rows.length - filtered.length;
   setTable(table, filtered);
   return deleted;
@@ -149,7 +149,7 @@ function addTableSheet(wb: XLSX.WorkBook, table: TableName): void {
     const ws = XLSX.utils.json_to_sheet([]);
     XLSX.utils.book_append_sheet(wb, ws, table);
   } else {
-    const flatData = data.map((row: any) => {
+    const flatData = data.map((row) => {
       const flat: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(row)) {
         flat[key] = Array.isArray(val) ? JSON.stringify(val) : val;

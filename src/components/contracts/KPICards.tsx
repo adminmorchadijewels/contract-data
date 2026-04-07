@@ -2,9 +2,10 @@ import { FileText, CheckCircle, AlertTriangle, Clock, TrendingUp, TrendingDown }
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { AnimatedCounter, HoverCard, PulseBadge } from "@/components/ui/motion";
+import type { ContractBase } from "@/types";
 
 interface KPICardsProps {
-  contracts: any[] | undefined;
+  contracts: ContractBase[] | undefined;
 }
 
 const containerVariants = {

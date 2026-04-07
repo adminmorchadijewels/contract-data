@@ -129,15 +129,16 @@ If the user's request is unclear or impossible with the available schema, still 
       sql: parsed.sql || "",
       explanation: parsed.explanation || "",
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const apiErr = err as { status?: number; code?: string; message?: string };
     // Handle specific OpenAI errors
-    if (err?.status === 401) {
+    if (apiErr?.status === 401) {
       return { sql: "", explanation: "", error: "Invalid API key. Please check your OpenAI key in Settings." };
     }
-    if (err?.status === 429) {
+    if (apiErr?.status === 429) {
       return { sql: "", explanation: "", error: "Rate limit exceeded. Please wait a moment and try again." };
     }
-    if (err?.status === 402 || err?.code === "insufficient_quota") {
+    if (apiErr?.status === 402 || apiErr?.code === "insufficient_quota") {
       return { sql: "", explanation: "", error: "OpenAI quota exceeded. Please check your billing." };
     }
     if (err instanceof SyntaxError) {
@@ -146,7 +147,7 @@ If the user's request is unclear or impossible with the available schema, still 
     return {
       sql: "",
       explanation: "",
-      error: err.message || "Failed to connect to OpenAI.",
+      error: apiErr.message || "Failed to connect to OpenAI.",
     };
   }
 }

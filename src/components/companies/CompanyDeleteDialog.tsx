@@ -1,8 +1,9 @@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCompanies } from "@/hooks/useCompanies";
+import type { Company } from "@/types";
 
 interface Props {
-  company: any;
+  company: Company | null;
   onClose: () => void;
 }
 

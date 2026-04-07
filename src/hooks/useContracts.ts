@@ -9,6 +9,7 @@ import {
   deleteRow,
   deleteWhere,
 } from "@/lib/excelDataService";
+import type { ContractBase, ContractDetail } from "@/types";
 
 export function useContracts() {
   const { toast } = useToast();
@@ -19,17 +20,17 @@ export function useContracts() {
     queryFn: async () => {
       const contracts = selectAll("contracts");
       const companies = selectAll("companies");
-      return contracts
-        .map((c: any) => ({
-          ...c,
-          group: companies.find((co: any) => co.id === c.group_id)
-            ? { name: (companies.find((co: any) => co.id === c.group_id) as any).name }
-            : null,
-          resort: companies.find((co: any) => co.id === c.resort_id)
-            ? { name: (companies.find((co: any) => co.id === c.resort_id) as any).name }
-            : null,
-        }))
-        .sort((a: any, b: any) => (b.created_at || "").localeCompare(a.created_at || ""));
+      return (contracts
+        .map((c) => {
+          const groupCompany = companies.find((co) => co.id === c.group_id);
+          const resortCompany = companies.find((co) => co.id === c.resort_id);
+          return {
+            ...c,
+            group: groupCompany ? { name: String(groupCompany.name ?? "") } : null,
+            resort: resortCompany ? { name: String(resortCompany.name ?? "") } : null,
+          };
+        }) as ContractBase[])
+        .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
     },
   });
 
@@ -67,9 +68,9 @@ export function useContracts() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const contract = selectById("contracts", id) as any;
-      if (contract?.sub_contract_id) {
-        const subId = contract.sub_contract_id;
+      const contract = selectById("contracts", id);
+      const subId = contract?.sub_contract_id;
+      if (subId) {
         deleteWhere("pricing_standard", "sub_contract_id", subId);
         deleteWhere("pricing_special", "sub_contract_id", subId);
         deleteWhere("contract_baggage", "sub_contract_id", subId);
@@ -105,20 +106,18 @@ export function useContractDetail(contractId: string | null) {
     queryKey: ["contract-detail", contractId],
     enabled: !!contractId,
     queryFn: async () => {
-      const contract = selectById("contracts", contractId!) as any;
+      const contract = selectById("contracts", contractId!);
       if (!contract) return null;
 
       const companies = selectAll("companies");
       const subId = contract.sub_contract_id;
+      const groupCompany = companies.find((c) => c.id === contract.group_id);
+      const resortCompany = companies.find((c) => c.id === contract.resort_id);
 
       return {
         ...contract,
-        group: companies.find((c: any) => c.id === contract.group_id)
-          ? { name: (companies.find((c: any) => c.id === contract.group_id) as any).name }
-          : null,
-        resort: companies.find((c: any) => c.id === contract.resort_id)
-          ? { name: (companies.find((c: any) => c.id === contract.resort_id) as any).name }
-          : null,
+        group: groupCompany ? { name: String(groupCompany.name ?? "") } : null,
+        resort: resortCompany ? { name: String(resortCompany.name ?? "") } : null,
         pricing_standard: subId ? selectWhere("pricing_standard", "sub_contract_id", subId) : [],
         pricing_special: subId ? selectWhere("pricing_special", "sub_contract_id", subId) : [],
         contract_baggage: subId ? selectWhere("contract_baggage", "sub_contract_id", subId) : [],
@@ -132,7 +131,7 @@ export function useContractDetail(contractId: string | null) {
         contract_service_commitment: subId ? selectWhere("contract_service_commitment", "sub_contract_id", subId) : [],
         contract_termination: subId ? selectWhere("contract_termination", "sub_contract_id", subId) : [],
         contract_notes: selectWhere("contract_notes", "contract_id", contractId!),
-      };
+      } as ContractDetail;
     },
   });
 }

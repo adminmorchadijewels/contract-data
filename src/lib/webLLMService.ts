@@ -72,14 +72,14 @@ function buildDataContext(): string {
     `- ${contracts.length} contract records`,
     `- ${atolls.length} atolls`,
     ``,
-    `Companies: ${companies.map((c: any) => `${c.name} (${c.type}, code: ${c.code || "N/A"})`).join("; ")}`,
+    `Companies: ${companies.map((c) => `${c.name} (${c.type}, code: ${c.code || "N/A"})`).join("; ")}`,
     ``,
-    `Atolls: ${atolls.map((a: any) => a.name).join(", ")}`,
+    `Atolls: ${atolls.map((a) => a.name).join(", ")}`,
     ``,
     `Contracts overview:`,
   ];
 
-  for (const c of contracts as any[]) {
+  for (const c of contracts as Record<string, unknown>[]) {
     const line = `  - ${c.contract_code}: resort=${c.resort_id || "?"}, type=${c.sub_contract_type || "?"}, dates=${c.start_date}→${c.end_date}`;
     summary.push(line);
   }

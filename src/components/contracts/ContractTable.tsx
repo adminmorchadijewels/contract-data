@@ -17,6 +17,7 @@ import { exportContractData } from "@/lib/excelDataService";
 import { useRole } from "@/lib/RoleContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal } from "@/components/ui/motion";
+import type { ContractBase, RelatedEntity } from "@/types";
 
 function getStatus(start: string, end: string) {
   const today = new Date();
@@ -34,9 +35,9 @@ function getStatus(start: string, end: string) {
 interface ContractGroup {
   contractId: string;
   contractCode: string;
-  group: any;
-  resort: any;
-  subContracts: any[];
+  group: RelatedEntity | null;
+  resort: RelatedEntity | null;
+  subContracts: ContractBase[];
 }
 
 export function ContractTable() {
@@ -48,9 +49,9 @@ export function ContractTable() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
-  const [editContract, setEditContract] = useState<any>(null);
+  const [editContract, setEditContract] = useState<ContractBase | null>(null);
   const [viewContractId, setViewContractId] = useState<string | null>(null);
-  const [deleteContract, setDeleteContract] = useState<any>(null);
+  const [deleteContract, setDeleteContract] = useState<ContractBase | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const toggleGroup = (contractId: string) => {
@@ -99,7 +100,7 @@ export function ContractTable() {
     });
   }, [contracts, search, statusFilter, typeFilter]);
 
-  const handleEditFromModal = (contract: any) => {
+  const handleEditFromModal = (contract: ContractBase) => {
     setViewContractId(null);
     setEditContract(contract);
     setShowForm(true);
@@ -143,7 +144,7 @@ export function ContractTable() {
     }
   };
 
-  const getSubCellValue = (sub: any, key: string) => {
+  const getSubCellValue = (sub: ContractBase, key: string) => {
     switch (key) {
       case "contract_code":
         return <span className="text-sm text-muted-foreground">{sub.sub_contract_id || sub.contract_code}</span>;

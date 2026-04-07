@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { TableSettingsModal } from "@/components/settings/TableSettingsModal";
 import { selectAll, insertRow, deleteRow } from "@/lib/excelDataService";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import type { Atoll } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
 import { getOpenAIKey, setOpenAIKey, hasOpenAIKey } from "@/lib/openaiSqlService";
@@ -45,13 +46,13 @@ export default function SettingsPage() {
 
   const { data: atolls } = useQuery({
     queryKey: ["atolls"],
-    queryFn: () => selectAll("atolls").sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")),
+    queryFn: () => (selectAll("atolls") as Atoll[]).sort((a, b) => (a.name || "").localeCompare(b.name || "")),
   });
 
   const handleAddAtoll = () => {
     const name = newAtoll.trim();
     if (!name) return;
-    const exists = atolls?.some((a: any) => a.name.toLowerCase() === name.toLowerCase());
+    const exists = atolls?.some((a) => a.name.toLowerCase() === name.toLowerCase());
     if (exists) {
       toast({ title: "Atoll already exists", variant: "destructive" });
       return;
@@ -171,7 +172,7 @@ export default function SettingsPage() {
             </div>
           )}
           <div className="flex flex-wrap gap-2 mt-2">
-            {atolls?.map((atoll: any, idx: number) => (
+            {atolls?.map((atoll, idx) => (
               <motion.span
                 key={atoll.id}
                 initial={{ opacity: 0, scale: 0.8 }}

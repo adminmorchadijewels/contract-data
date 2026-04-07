@@ -13,10 +13,11 @@ import { useCompanies } from "@/hooks/useCompanies";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
 import { format } from "date-fns";
+import type { ContractDetail, PricingStandardRow } from "@/types";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-interface Props { contract: any; }
+interface Props { contract: ContractDetail; }
 
 export function StandardPricingTab({ contract }: Props) {
   const { data: companies } = useCompanies();
@@ -25,7 +26,7 @@ export function StandardPricingTab({ contract }: Props) {
   const { toast } = useToast();
   const { canCreate, canEdit, canDelete } = useRole();
   const [showForm, setShowForm] = useState(false);
-  const [editRow, setEditRow] = useState<any>(null);
+  const [editRow, setEditRow] = useState<PricingStandardRow | null>(null);
   const pricing = contract.pricing_standard || [];
 
   const [formData, setFormData] = useState({
@@ -40,13 +41,13 @@ export function StandardPricingTab({ contract }: Props) {
     setShowForm(true);
   };
 
-  const openEdit = (row: any) => {
+  const openEdit = (row: PricingStandardRow) => {
     setEditRow(row);
     setFormData({
       weekdays: row.weekdays || [], point_a_id: row.point_a_id || "", point_b_id: row.point_b_id || "",
       transfer_type: row.transfer_type || "", pax_condition: row.pax_condition || "",
       passenger_type: row.passenger_type || "Adult",
-      return_fare_usd: row.return_fare_usd?.toString() || "", one_way_fare_usd: row.one_way_fare_usd?.toString() || "",
+      return_fare_usd: String(row.return_fare_usd ?? ""), one_way_fare_usd: String(row.one_way_fare_usd ?? ""),
       start_date: row.start_date || "", end_date: row.end_date || "",
     });
     setShowForm(true);
@@ -99,7 +100,7 @@ export function StandardPricingTab({ contract }: Props) {
     }
   };
 
-  const getDestName = (id: string) => resorts?.find((d: any) => d.id === id)?.name || "\u2014";
+  const getDestName = (id: string) => resorts?.find((d) => d.id === id)?.name || "\u2014";
 
   return (
     <div className="mt-4 space-y-4">
@@ -126,7 +127,7 @@ export function StandardPricingTab({ contract }: Props) {
           <TableBody>
             {pricing.length === 0 ? (
               <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No pricing data.</TableCell></TableRow>
-            ) : pricing.map((row: any) => (
+            ) : pricing.map((row) => (
               <TableRow key={row.id} className="data-table-row">
                 <TableCell><div className="flex gap-1 flex-wrap">{(row.weekdays || []).map((d: string) => <Badge key={d} variant="secondary" className="text-xs">{d}</Badge>)}</div></TableCell>
                 <TableCell>{getDestName(row.point_a_id)}</TableCell>
@@ -168,14 +169,14 @@ export function StandardPricingTab({ contract }: Props) {
                 <Label>Point A</Label>
                 <Select value={formData.point_a_id} onValueChange={(v) => setFormData((p) => ({ ...p, point_a_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>{resorts?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code || ""})</SelectItem>)}</SelectContent>
+                  <SelectContent>{resorts?.map((d) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code || ""})</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Point B</Label>
                 <Select value={formData.point_b_id} onValueChange={(v) => setFormData((p) => ({ ...p, point_b_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>{resorts?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code || ""})</SelectItem>)}</SelectContent>
+                  <SelectContent>{resorts?.map((d) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code || ""})</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>

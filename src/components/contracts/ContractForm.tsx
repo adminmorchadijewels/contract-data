@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { contractSchema, ContractFormData } from "@/lib/validations";
 import { useContracts } from "@/hooks/useContracts";
 import { useCompanies } from "@/hooks/useCompanies";
+import type { ContractBase } from "@/types";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  contract?: any;
+  contract?: ContractBase;
 }
 
 export function ContractForm({ open, onClose, contract }: Props) {

@@ -1,7 +1,9 @@
 import { defineConfig } from "vite";
+import type { ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import * as XLSX from "xlsx";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 
 function excelWriterPlugin() {
@@ -9,8 +11,8 @@ function excelWriterPlugin() {
 
   return {
     name: "excel-writer",
-    configureServer(server: any) {
-      server.middlewares.use("/__api/save-table", (req: any, res: any) => {
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use("/__api/save-table", (req: IncomingMessage, res: ServerResponse) => {
         if (req.method !== "POST") {
           res.statusCode = 405;
           res.end("Method not allowed");
@@ -33,7 +35,7 @@ function excelWriterPlugin() {
               const ws = XLSX.utils.aoa_to_sheet([]);
               XLSX.utils.book_append_sheet(wb, ws, table);
             } else {
-              const flatRows = rows.map((row: any) => {
+              const flatRows = rows.map((row: Record<string, unknown>) => {
                 const flat: Record<string, unknown> = {};
                 for (const [key, val] of Object.entries(row)) {
                   flat[key] = Array.isArray(val) ? JSON.stringify(val) : val;
@@ -50,10 +52,10 @@ function excelWriterPlugin() {
             res.statusCode = 200;
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ ok: true }));
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error("Excel write error:", err);
             res.statusCode = 500;
-            res.end(err.message);
+            res.end(err instanceof Error ? err.message : "Unknown error");
           }
         });
       });

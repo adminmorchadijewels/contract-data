@@ -11,11 +11,12 @@ import { useCompanies } from "@/hooks/useCompanies";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { selectAll } from "@/lib/excelDataService";
+import type { Company, Atoll } from "@/types";
 
 interface CompanyFormProps {
   open: boolean;
   onClose: () => void;
-  company?: any;
+  company?: Company;
 }
 
 export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
@@ -24,7 +25,7 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
 
   const { data: atolls } = useQuery({
     queryKey: ["atolls"],
-    queryFn: () => selectAll("atolls").sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")),
+    queryFn: () => (selectAll("atolls") as Atoll[]).sort((a, b) => (a.name || "").localeCompare(b.name || "")),
   });
 
   const form = useForm<CompanyFormData>({
@@ -101,7 +102,7 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
                     <FormControl><SelectTrigger><SelectValue placeholder="Select atoll" /></SelectTrigger></FormControl>
                     <SelectContent>
                       <SelectItem value="__none__">None</SelectItem>
-                      {atolls?.map((a: any) => (
+                      {atolls?.map((a) => (
                         <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
                       ))}
                     </SelectContent>

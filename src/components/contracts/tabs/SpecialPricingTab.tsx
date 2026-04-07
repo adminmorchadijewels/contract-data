@@ -11,17 +11,18 @@ import { insertRow, updateRow, deleteRow } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
+import type { ContractDetail, PricingSpecialRow } from "@/types";
 
 const REQUEST_TYPES = ["Management", "Staff", "Service providers", "FAM trips", "Tour Operators", "Tour Guides", "Journalists", "Advertisers", "Others"] as const;
 
-interface Props { contract: any; }
+interface Props { contract: ContractDetail; }
 
 export function SpecialPricingTab({ contract }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { canCreate, canEdit, canDelete } = useRole();
   const [showForm, setShowForm] = useState(false);
-  const [editRow, setEditRow] = useState<any>(null);
+  const [editRow, setEditRow] = useState<PricingSpecialRow | null>(null);
   const pricing = contract.pricing_special || [];
 
   const [formData, setFormData] = useState({
@@ -36,11 +37,11 @@ export function SpecialPricingTab({ contract }: Props) {
     setShowForm(true);
   };
 
-  const openEdit = (row: any) => {
+  const openEdit = (row: PricingSpecialRow) => {
     setEditRow(row);
     setFormData({
       request_type: row.request_type || "Management", discount_type: row.discount_type || "Absolute",
-      return_fare_usd: row.return_fare_usd?.toString() || "", one_way_fare_usd: row.one_way_fare_usd?.toString() || "",
+      return_fare_usd: String(row.return_fare_usd ?? ""), one_way_fare_usd: String(row.one_way_fare_usd ?? ""),
       pax_condition: row.pax_condition || "", start_date: row.start_date || "", end_date: row.end_date || "",
     });
     setShowForm(true);
@@ -96,7 +97,7 @@ export function SpecialPricingTab({ contract }: Props) {
           <TableBody>
             {pricing.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No special pricing data.</TableCell></TableRow>
-            ) : pricing.map((row: any) => (
+            ) : pricing.map((row) => (
               <TableRow key={row.id} className="data-table-row">
                 <TableCell>{row.request_type}</TableCell>
                 <TableCell>{row.discount_type}</TableCell>

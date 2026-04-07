@@ -12,13 +12,15 @@ import { insertRow, updateRow, deleteRow, type TableName } from "@/lib/excelData
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
+import type { ContractDetail, ParamRow, AgeRow, AddonRow } from "@/types";
+import type { LucideIcon } from "lucide-react";
 
-interface Props { contract: any; }
+interface Props { contract: ContractDetail; }
 
 type ParamTable = "contract_baggage" | "contract_booking" | "contract_fuel" | "contract_payment_plan" | "contract_service_commitment" | "contract_termination";
 
 function ParamSection({ title, icon: Icon, tableName, data, contractId, subContractId, fields }: {
-  title: string; icon: any; tableName: ParamTable; data: any[];
+  title: string; icon: LucideIcon; tableName: ParamTable; data: ParamRow[];
   contractId: string; subContractId: string;
   fields: { key: string; label: string; type?: string }[];
 }) {
@@ -26,7 +28,7 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
   const { toast } = useToast();
   const { canCreate, canEdit, canDelete } = useRole();
   const [showForm, setShowForm] = useState(false);
-  const [editRow, setEditRow] = useState<any>(null);
+  const [editRow, setEditRow] = useState<ParamRow | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
 
   const openAdd = () => {
@@ -37,16 +39,16 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
     setShowForm(true);
   };
 
-  const openEdit = (row: any) => {
+  const openEdit = (row: ParamRow) => {
     setEditRow(row);
     const d: Record<string, string> = {};
-    fields.forEach((f) => (d[f.key] = row[f.key]?.toString() || ""));
+    fields.forEach((f) => (d[f.key] = String(row[f.key] ?? "")));
     setFormData(d);
     setShowForm(true);
   };
 
   const handleSave = async () => {
-    const payload: Record<string, any> = { sub_contract_id: subContractId };
+    const payload: Record<string, unknown> = { sub_contract_id: subContractId };
     fields.forEach((f) => { payload[f.key] = formData[f.key] || null; });
     if (editRow) {
       updateRow(tableName as TableName, editRow.id, payload);
@@ -90,7 +92,7 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
             <TableBody>
               {data.length === 0 ? (
                 <TableRow><TableCell colSpan={fields.length + (canEdit || canDelete ? 1 : 0)} className="text-center py-6 text-muted-foreground">No data.</TableCell></TableRow>
-              ) : data.map((row: any) => (
+              ) : data.map((row) => (
                 <TableRow key={row.id} className="data-table-row">
                   {fields.map((f) => (
                     <TableCell key={f.key}>
@@ -138,16 +140,16 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
   );
 }
 
-function AgeSection({ data, contractId, subContractId }: { data: any[]; contractId: string; subContractId: string }) {
+function AgeSection({ data, contractId, subContractId }: { data: AgeRow[]; contractId: string; subContractId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { canEdit } = useRole();
-  const [editRow, setEditRow] = useState<any>(null);
+  const [editRow, setEditRow] = useState<AgeRow | null>(null);
   const [formData, setFormData] = useState({ min_age: "", max_age: "" });
 
-  const openEdit = (row: any) => {
+  const openEdit = (row: AgeRow) => {
     setEditRow(row);
-    setFormData({ min_age: row.min_age?.toString() || "", max_age: row.max_age?.toString() || "" });
+    setFormData({ min_age: String(row.min_age ?? ""), max_age: String(row.max_age ?? "") });
   };
 
   const handleSave = async () => {
@@ -180,7 +182,7 @@ function AgeSection({ data, contractId, subContractId }: { data: any[]; contract
           <TableBody>
             {data.length === 0 ? (
               <TableRow><TableCell colSpan={canEdit ? 4 : 3} className="text-center py-6 text-muted-foreground">No age data.</TableCell></TableRow>
-            ) : data.map((row: any) => (
+            ) : data.map((row) => (
               <TableRow key={row.id} className="data-table-row">
                 <TableCell>{row.type}</TableCell>
                 <TableCell>{row.min_age}</TableCell>
@@ -208,16 +210,16 @@ function AgeSection({ data, contractId, subContractId }: { data: any[]; contract
   );
 }
 
-function AddonsSection({ data, contractId, subContractId }: { data: any[]; contractId: string; subContractId: string }) {
+function AddonsSection({ data, contractId, subContractId }: { data: AddonRow[]; contractId: string; subContractId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { canCreate, canEdit, canDelete } = useRole();
   const [showForm, setShowForm] = useState(false);
-  const [editRow, setEditRow] = useState<any>(null);
+  const [editRow, setEditRow] = useState<AddonRow | null>(null);
   const [formData, setFormData] = useState({ sub_category: "Dedicated Vehicle", type: "", value: "", remark: "" });
 
   const openAdd = () => { setEditRow(null); setFormData({ sub_category: "Dedicated Vehicle", type: "", value: "", remark: "" }); setShowForm(true); };
-  const openEdit = (row: any) => { setEditRow(row); setFormData({ sub_category: row.sub_category || "Dedicated Vehicle", type: row.type || "", value: row.value?.toString() || "", remark: row.remark || "" }); setShowForm(true); };
+  const openEdit = (row: AddonRow) => { setEditRow(row); setFormData({ sub_category: row.sub_category || "Dedicated Vehicle", type: row.type || "", value: String(row.value ?? ""), remark: row.remark || "" }); setShowForm(true); };
 
   const handleSave = async () => {
     const payload = { sub_contract_id: subContractId, sub_category: formData.sub_category, type: formData.type, value: parseFloat(formData.value) || 0, remark: formData.remark || null };
@@ -241,7 +243,7 @@ function AddonsSection({ data, contractId, subContractId }: { data: any[]; contr
             <TableHeader><TableRow className="border-border/30 hover:bg-transparent"><TableHead>Sub-Category</TableHead><TableHead>Type</TableHead><TableHead>Value (USD)</TableHead><TableHead>Remark</TableHead>{(canEdit || canDelete) && <TableHead className="w-20">Actions</TableHead>}</TableRow></TableHeader>
             <TableBody>
               {data.length === 0 ? <TableRow><TableCell colSpan={canEdit || canDelete ? 5 : 4} className="text-center py-6 text-muted-foreground">No data.</TableCell></TableRow>
-              : data.map((row: any) => (
+              : data.map((row) => (
                 <TableRow key={row.id} className="data-table-row">
                   <TableCell>{row.sub_category}</TableCell><TableCell>{row.type}</TableCell><TableCell>${row.value?.toFixed(2)}</TableCell>
                   <TableCell>{row.remark || "—"}</TableCell>
@@ -273,7 +275,7 @@ function AddonsSection({ data, contractId, subContractId }: { data: any[]; contr
   );
 }
 
-function InsuranceSection({ data, contractId, subContractId }: { data: any[]; contractId: string; subContractId: string }) {
+function InsuranceSection({ data, contractId, subContractId }: { data: ParamRow[]; contractId: string; subContractId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { canEdit } = useRole();
@@ -309,13 +311,13 @@ function InsuranceSection({ data, contractId, subContractId }: { data: any[]; co
   );
 }
 
-function GovChargesSection({ data, contractId, subContractId }: { data: any[]; contractId: string; subContractId: string }) {
+function GovChargesSection({ data, contractId, subContractId }: { data: ParamRow[]; contractId: string; subContractId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { canEdit } = useRole();
   const charge = data[0];
-  const [value, setValue] = useState(charge?.value?.toString() || "3.5");
-  const [remark, setRemark] = useState(charge?.remark || "Return per pax excluding GST");
+  const [value, setValue] = useState(String(charge?.value ?? "3.5"));
+  const [remark, setRemark] = useState(String(charge?.remark ?? "Return per pax excluding GST"));
 
   const handleSave = async () => {
     const payload = { sub_contract_id: subContractId, parameter: "Government_charges", value: parseFloat(value), remark: remark || null };

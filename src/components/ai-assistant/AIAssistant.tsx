@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Send, Bot, User, Loader2, Trash2, Sparkles, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,11 +72,11 @@ export function AIAssistant() {
         progress: 100,
         progressText: "Model ready",
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       setModelStatus((prev) => ({
         ...prev,
         loading: false,
-        error: err.message || "Failed to load model",
+        error: err instanceof Error ? err.message : "Failed to load model",
       }));
     }
   }, [selectedModel]);
@@ -118,11 +118,11 @@ export function AIAssistant() {
           )
         );
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMsg.id
-            ? { ...m, content: `Error: ${err.message || "Failed to get response."}` }
+            ? { ...m, content: `Error: ${err instanceof Error ? err.message : "Failed to get response."}` }
             : m
         )
       );
@@ -273,7 +273,7 @@ export function AIAssistant() {
             </div>
           </div>
         ) : (
-          <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
+          <ScrollArea className="flex-1 p-4" ref={scrollRef as React.RefObject<HTMLDivElement>}>
             <div className="space-y-4 max-w-3xl mx-auto">
               {messages.map((msg) => (
                 <div

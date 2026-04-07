@@ -11,8 +11,9 @@ import { insertRow, updateRow } from "@/lib/excelDataService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
+import type { ContractDetail } from "@/types";
 
-interface Props { contract: any; }
+interface Props { contract: ContractDetail; }
 
 export function NotesTab({ contract }: Props) {
   const queryClient = useQueryClient();
