@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import type { User, Session } from "@supabase/supabase-js";
-import { supabase, isAllowedEmail } from "@/lib/supabase";
+import { supabase, isAllowedEmail, isUserAllowed } from "@/lib/supabase";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,8 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /** Set when a sign-in is rejected by the allowlist (not just the domain). */
+  notAuthorised: boolean;
 }
 
 // ── Context ──────────────────────────────────────────────────────────────────
@@ -22,53 +24,92 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   session: null,
   loading: true,
+  notAuthorised: false,
 });
 
-// ── Cookie helpers (keep edge middleware in sync) ─────────────────────────────
+// ── Cookie helpers ────────────────────────────────────────────────────────────
 
 const SESSION_COOKIE = "tma-session";
+function setSessionCookie()  { document.cookie = `${SESSION_COOKIE}=1; path=/; SameSite=Strict`; }
+function clearSessionCookie() { document.cookie = `${SESSION_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict`; }
 
-function setSessionCookie() {
-  document.cookie = `${SESSION_COOKIE}=1; path=/; SameSite=Strict`;
-}
-function clearSessionCookie() {
-  document.cookie = `${SESSION_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict`;
+// ── Helper: full authorisation check ─────────────────────────────────────────
+
+async function checkAuthorised(email: string): Promise<boolean> {
+  // Layer 1: domain
+  if (!isAllowedEmail(email)) return false;
+  // Layer 2: allowlist table
+  return isUserAllowed(email);
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser]       = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]               = useState<User | null>(null);
+  const [session, setSession]         = useState<Session | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [notAuthorised, setNotAuthorised] = useState(false);
 
   useEffect(() => {
-    // Rehydrate persisted session on mount
-    supabase.auth.getSession().then(({ data }) => {
+    // ── Rehydrate persisted session on mount ────────────────────────────────
+    supabase.auth.getSession().then(async ({ data }) => {
       const s = data.session;
       const u = s?.user ?? null;
-      // Enforce domain restriction even for existing sessions
-      const authorised = u && isAllowedEmail(u.email ?? "");
-      setSession(authorised ? s : null);
-      setUser(authorised ? u : null);
-      if (authorised) setSessionCookie(); else clearSessionCookie();
+
+      if (u?.email) {
+        const ok = await checkAuthorised(u.email);
+        if (ok) {
+          setUser(u);
+          setSession(s);
+          setSessionCookie();
+        } else {
+          // Existing session but user removed from allowlist — force sign-out
+          await supabase.auth.signOut();
+          clearSessionCookie();
+        }
+      }
       setLoading(false);
     });
 
-    // Keep state in sync with Supabase token refreshes / logouts
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      const u = s?.user ?? null;
-      const authorised = u && isAllowedEmail(u.email ?? "");
-      setSession(authorised ? s : null);
-      setUser(authorised ? u : null);
-      if (authorised) setSessionCookie(); else clearSessionCookie();
-    });
+    // ── Listen for auth events ──────────────────────────────────────────────
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, s) => {
+        const u = s?.user ?? null;
+
+        if (event === "SIGNED_OUT" || !u) {
+          setUser(null);
+          setSession(null);
+          clearSessionCookie();
+          return;
+        }
+
+        if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+          const ok = await checkAuthorised(u.email ?? "");
+          if (!ok) {
+            // Authenticated by Supabase but not on the allowlist
+            setNotAuthorised(true);
+            await supabase.auth.signOut();
+            clearSessionCookie();
+            return;
+          }
+          setNotAuthorised(false);
+          setUser(u);
+          setSession(s);
+          setSessionCookie();
+          return;
+        }
+
+        // TOKEN_REFRESHED and other events — trust existing state
+        if (user) setSessionCookie();
+      }
+    );
 
     return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading }}>
+    <AuthContext.Provider value={{ user, session, loading, notAuthorised }}>
       {children}
     </AuthContext.Provider>
   );
