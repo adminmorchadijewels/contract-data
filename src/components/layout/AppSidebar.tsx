@@ -14,6 +14,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { useRole, type Role } from "@/lib/RoleContext";
+import { UserMenu } from "@/components/auth/UserMenu";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -168,6 +169,8 @@ export function AppSidebar() {
             </Button>
           </motion.div>
         </div>
+
+        <UserMenu />
       </SidebarFooter>
     </Sidebar>
   );

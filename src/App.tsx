@@ -8,6 +8,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { initializeData } from "@/lib/excelDataService";
 import { RoleProvider } from "@/lib/RoleContext";
+import { AuthProvider } from "@/context/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
 import Index from "./pages/Index";
 import ContractsPage from "./pages/Contracts";
@@ -92,6 +93,7 @@ const App = () => {
   }
 
   return (
+    <AuthProvider>
     <RoleProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
@@ -113,6 +115,7 @@ const App = () => {
         </TooltipProvider>
       </QueryClientProvider>
     </RoleProvider>
+    </AuthProvider>
   );
 };
 
