@@ -1,29 +1,26 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, ChevronUp } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { getUser, logout } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function UserMenu() {
-  const { user, signOut } = useAuth();
+  const user = getUser();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   if (!user) return null;
 
-  const displayName = user.displayName ?? user.email ?? "User";
-  const email = user.email ?? "";
-  const photo = user.photoURL;
-  const initials = displayName
+  const initials = user.displayName
     .split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
 
-  async function handleSignOut() {
+  function handleSignOut() {
     setOpen(false);
-    await signOut();
+    logout();
     navigate("/login", { replace: true });
   }
 
@@ -40,8 +37,8 @@ export function UserMenu() {
           >
             {/* User info */}
             <div className="px-3 py-2.5 border-b border-border/60">
-              <p className="text-xs font-semibold text-foreground truncate">{displayName}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{email}</p>
+              <p className="text-xs font-semibold text-foreground truncate">{user.displayName}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
             </div>
 
             {/* Sign out */}
@@ -56,23 +53,19 @@ export function UserMenu() {
         )}
       </AnimatePresence>
 
-      {/* Trigger button */}
+      {/* Trigger */}
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent transition-colors text-left"
       >
-        {/* Avatar */}
-        <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center text-[11px] font-bold text-primary">
-          {photo ? (
-            <img src={photo} alt={displayName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-          ) : (
-            <span>{initials}</span>
-          )}
+        {/* Avatar initials */}
+        <div className="h-7 w-7 rounded-full shrink-0 bg-primary/20 flex items-center justify-center text-[11px] font-bold text-primary">
+          {initials}
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-sidebar-foreground truncate">{displayName}</p>
-          <p className="text-[10px] text-muted-foreground truncate">{email}</p>
+          <p className="text-xs font-medium text-sidebar-foreground truncate">{user.displayName}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
         </div>
 
         <ChevronUp
