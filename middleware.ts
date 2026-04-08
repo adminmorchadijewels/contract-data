@@ -47,7 +47,6 @@ const LOGIN_PATH = "/login";
  */
 const PUBLIC_PATHS: string[] = [
   LOGIN_PATH,
-  "/",             // Landing / splash — remove if the root is also protected
   "/_vercel",      // Vercel internals
   "/favicon.ico",
   "/tma-logo.svg",

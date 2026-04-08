@@ -15,6 +15,8 @@ import SettingsPage from "./pages/Settings";
 import AssistantPage from "./pages/Assistant";
 import QueryPage from "./pages/Query";
 import NotFound from "./pages/NotFound";
+import LoginPage from "./pages/Login";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -97,7 +99,15 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/*" element={<AppLayout />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
