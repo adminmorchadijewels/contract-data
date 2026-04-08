@@ -1,39 +1,113 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+
+// ── Firebase error code → human-readable message ─────────────────────────────
+function friendlyError(code: string | undefined): string {
+  switch (code) {
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return "Incorrect email or password.";
+    case "auth/email-already-in-use":
+      return "An account with this email already exists.";
+    case "auth/weak-password":
+      return "Password must be at least 6 characters.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a moment and try again.";
+    case "auth/network-request-failed":
+      return "Network error. Check your connection and try again.";
+    default:
+      return "Something went wrong. Please try again.";
+  }
+}
+
+// ── Shared input styles ───────────────────────────────────────────────────────
+const inputClass =
+  "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors";
+
+const btnPrimary =
+  "h-10 w-full rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
+
+// ── View types ────────────────────────────────────────────────────────────────
+type View = "sign-in" | "sign-up" | "forgot";
 
 export default function LoginPage() {
-  const { user, loading, signInWithGoogle } = useAuth();
+  const { user, loading, signInWithEmail, signUpWithEmail, sendPasswordReset } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+
+  const [view, setView] = useState<View>("sign-in");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [signingIn, setSigningIn] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  // Form fields
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
 
   // Already authenticated — go straight to the app
   useEffect(() => {
     if (!loading && user) {
-      const redirect = params.get("redirect") || "/";
-      navigate(redirect, { replace: true });
+      navigate(params.get("redirect") || "/", { replace: true });
     }
   }, [user, loading, navigate, params]);
 
-  async function handleGoogleSignIn() {
+  function switchView(next: View) {
     setError("");
-    setSigningIn(true);
+    setResetSent(false);
+    setPassword("");
+    setConfirm("");
+    setView(next);
+  }
+
+  // ── Sign In ───────────────────────────────────────────────────────────────
+  async function handleSignIn(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
     try {
-      await signInWithGoogle();
-      // navigation handled by the useEffect above after onAuthStateChanged fires
+      await signInWithEmail(email, password);
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      if (code === "auth/popup-closed-by-user") {
-        setError("Sign-in cancelled. Please try again.");
-      } else if (code === "auth/popup-blocked") {
-        setError("Pop-up blocked by your browser. Please allow pop-ups for this site.");
-      } else {
-        setError("Sign-in failed. Please try again.");
-      }
-      setSigningIn(false);
+      setError(friendlyError((err as { code?: string }).code));
+      setBusy(false);
+    }
+  }
+
+  // ── Sign Up ───────────────────────────────────────────────────────────────
+  async function handleSignUp(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await signUpWithEmail(name.trim(), email, password);
+    } catch (err: unknown) {
+      setError(friendlyError((err as { code?: string }).code));
+      setBusy(false);
+    }
+  }
+
+  // ── Forgot Password ───────────────────────────────────────────────────────
+  async function handleForgotPassword(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await sendPasswordReset(email);
+      setResetSent(true);
+    } catch (err: unknown) {
+      setError(friendlyError((err as { code?: string }).code));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -57,66 +131,248 @@ export default function LoginPage() {
         transition={{ type: "spring", stiffness: 260, damping: 22 }}
         className="w-full max-w-sm"
       >
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-10 gap-3">
+        {/* Logo / title */}
+        <div className="flex flex-col items-center mb-8 gap-3">
           <motion.img
             src="/tma-logo.svg"
             alt="TMA"
-            className="h-14 w-14 rounded-2xl"
+            className="h-12 w-12 rounded-2xl"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.1, type: "spring", stiffness: 260, damping: 20 }}
+            transition={{ delay: 0.08, type: "spring", stiffness: 260, damping: 20 }}
           />
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            <h1 className="text-xl font-bold text-foreground tracking-tight">
               TMA Contract Data
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Sign in to access the platform
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {view === "sign-in" && "Sign in to your account"}
+              {view === "sign-up" && "Create a new account"}
+              {view === "forgot" && "Reset your password"}
             </p>
           </div>
         </div>
 
-        {/* Google sign-in button */}
-        <motion.button
-          onClick={handleGoogleSignIn}
-          disabled={signingIn}
-          whileHover={{ scale: signingIn ? 1 : 1.02 }}
-          whileTap={{ scale: signingIn ? 1 : 0.98 }}
-          className="w-full flex items-center justify-center gap-3 h-11 px-4 rounded-lg border border-border bg-card text-foreground text-sm font-medium hover:bg-accent transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
-        >
-          {signingIn ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="h-4 w-4 border-2 border-current border-t-transparent rounded-full"
-            />
-          ) : (
-            /* Google "G" logo SVG */
-            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
-              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.8 2.5 30.3 0 24 0 14.8 0 6.9 5.4 3 13.3l7.9 6.1C12.7 13.2 17.9 9.5 24 9.5z"/>
-              <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z"/>
-              <path fill="#FBBC05" d="M10.9 28.6A14.8 14.8 0 0 1 9.5 24c0-1.6.3-3.2.8-4.6L2.4 13.3A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l8.3-6.1z"/>
-              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.1 0-11.3-4.1-13.1-9.6l-8.1 6.2C6.7 42.5 14.8 48 24 48z"/>
-            </svg>
-          )}
-          <span>{signingIn ? "Signing in…" : "Continue with Google"}</span>
-        </motion.button>
-
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 text-sm text-destructive text-center"
+        {/* ── Animated view switcher ── */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={view}
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.18 }}
           >
-            {error}
-          </motion.p>
-        )}
 
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          Access is restricted to authorised accounts only.
-        </p>
+            {/* ──── Sign In ──────────────────────────────────────────────── */}
+            {view === "sign-in" && (
+              <form onSubmit={handleSignIn} className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    autoFocus
+                    required
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => switchView("forgot")}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    required
+                    className={inputClass}
+                  />
+                </div>
+
+                {error && <ErrorMsg message={error} />}
+
+                <button type="submit" disabled={busy} className={btnPrimary}>
+                  {busy ? <Spinner /> : "Sign in"}
+                </button>
+
+                <p className="text-center text-sm text-muted-foreground pt-1">
+                  Don't have an account?{" "}
+                  <button type="button" onClick={() => switchView("sign-up")} className="text-primary hover:underline font-medium">
+                    Create one
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {/* ──── Sign Up ──────────────────────────────────────────────── */}
+            {view === "sign-up" && (
+              <form onSubmit={handleSignUp} className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="name" className="text-sm font-medium text-foreground">Full name</label>
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Jane Smith"
+                    autoComplete="name"
+                    autoFocus
+                    required
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="email-up" className="text-sm font-medium text-foreground">Email</label>
+                  <input
+                    id="email-up"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    required
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="password-up" className="text-sm font-medium text-foreground">Password</label>
+                  <input
+                    id="password-up"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    autoComplete="new-password"
+                    required
+                    minLength={6}
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="confirm" className="text-sm font-medium text-foreground">Confirm password</label>
+                  <input
+                    id="confirm"
+                    type="password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    required
+                    className={inputClass}
+                  />
+                </div>
+
+                {error && <ErrorMsg message={error} />}
+
+                <button type="submit" disabled={busy} className={btnPrimary}>
+                  {busy ? <Spinner /> : "Create account"}
+                </button>
+
+                <p className="text-center text-sm text-muted-foreground pt-1">
+                  Already have an account?{" "}
+                  <button type="button" onClick={() => switchView("sign-in")} className="text-primary hover:underline font-medium">
+                    Sign in
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {/* ──── Forgot Password ───────────────────────────────────────── */}
+            {view === "forgot" && (
+              <div className="flex flex-col gap-4">
+                {resetSent ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="rounded-lg border border-border bg-card p-4 text-center flex flex-col gap-2"
+                  >
+                    <p className="text-sm font-medium text-foreground">Check your inbox</p>
+                    <p className="text-xs text-muted-foreground">
+                      A password reset link was sent to <span className="font-medium">{email}</span>.
+                    </p>
+                  </motion.div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="email-reset" className="text-sm font-medium text-foreground">Email</label>
+                      <input
+                        id="email-reset"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        autoFocus
+                        required
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {error && <ErrorMsg message={error} />}
+
+                    <button type="submit" disabled={busy} className={btnPrimary}>
+                      {busy ? <Spinner /> : "Send reset link"}
+                    </button>
+                  </form>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => switchView("sign-in")}
+                  className="text-center text-sm text-primary hover:underline"
+                >
+                  ← Back to sign in
+                </button>
+              </div>
+            )}
+
+          </motion.div>
+        </AnimatePresence>
       </motion.div>
     </div>
+  );
+}
+
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
+function ErrorMsg({ message }: { message: string }) {
+  return (
+    <motion.p
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-sm text-destructive"
+    >
+      {message}
+    </motion.p>
+  );
+}
+
+function Spinner() {
+  return (
+    <span className="flex items-center justify-center">
+      <motion.span
+        animate={{ rotate: 360 }}
+        transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
+        className="inline-block h-4 w-4 border-2 border-current border-t-transparent rounded-full"
+      />
+    </span>
   );
 }

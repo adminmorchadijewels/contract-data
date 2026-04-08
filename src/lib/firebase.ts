@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey:     import.meta.env.VITE_FIREBASE_API_KEY as string,
@@ -8,12 +8,7 @@ const firebaseConfig = {
   appId:      import.meta.env.VITE_FIREBASE_APP_ID as string,
 };
 
-// Prevent duplicate initialization when Vite hot-reloads the module
+// Prevent duplicate initialization during Vite hot-reloads
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-
-// Request the user's email so we can display it in the UI
-googleProvider.addScope("email");
-googleProvider.addScope("profile");

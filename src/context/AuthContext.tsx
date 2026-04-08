@@ -7,18 +7,23 @@ import {
 } from "react";
 import {
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (name: string, email: string, password: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -44,26 +49,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Keep local state in sync with Firebase's persisted auth token.
-  // Firebase automatically refreshes the ID token in the background.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      // Mirror auth state into a cookie so the edge middleware can read it
-      // without needing to verify the Firebase JWT (just presence check).
-      if (firebaseUser) {
-        setSessionCookie();
-      } else {
-        clearSessionCookie();
-      }
+      if (firebaseUser) setSessionCookie();
+      else clearSessionCookie();
       setLoading(false);
     });
     return unsubscribe;
   }, []);
 
-  async function signInWithGoogle() {
-    await signInWithPopup(auth, googleProvider);
-    // onAuthStateChanged fires automatically after this — no manual setUser needed
+  async function signInWithEmail(email: string, password: string) {
+    await signInWithEmailAndPassword(auth, email, password);
+  }
+
+  async function signUpWithEmail(name: string, email: string, password: string) {
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    // Attach display name immediately so UserMenu shows it right away
+    await updateProfile(credential.user, { displayName: name });
+    // Force-refresh the user object in context so displayName is visible
+    setUser({ ...credential.user, displayName: name } as User);
+  }
+
+  async function sendPasswordReset(email: string) {
+    await sendPasswordResetEmail(auth, email);
   }
 
   async function signOut() {
@@ -72,7 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider
+      value={{ user, loading, signInWithEmail, signUpWithEmail, sendPasswordReset, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );
