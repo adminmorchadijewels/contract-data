@@ -6,7 +6,7 @@
 --
 -- Changes:
 --   D1  CREATE TABLE atolls  (new — exists in Excel, not in SQL)
---   D3  ALTER companies      ADD COLUMN code, atoll
+--   D3  ALTER companies      ADD COLUMN code (UNIQUE), atoll_id (FK → atolls)
 --   D4  ALTER 12 sub-tables  ADD COLUMN updated_at + triggers
 --   D5  ALTER contract_fuel  value  numeric → text  (CRITICAL type fix)
 --   D6  ALTER pricing_special  expand request_type CHECK (add VIP Guest)
@@ -41,12 +41,22 @@ CREATE TRIGGER update_atolls_updated_at
 
 -- ─────────────────────────────────────────────────────────────
 -- D3: companies — add missing columns
---     Excel has `code` (e.g. "MAR", "SON") and `atoll`
---     (nullable — only present on resort-type companies).
+--     code:     short identifier (MAR, SON, LVMH …).
+--               Must be unique — these are company identifiers.
+--     atoll_id: FK to atolls(id).
+--               Only resort-type companies carry an atoll (33 % null).
+--               Stored as text names in Excel; load step must resolve
+--               name → atolls.id before inserting.
 -- ─────────────────────────────────────────────────────────────
 ALTER TABLE public.companies
-  ADD COLUMN IF NOT EXISTS code  text,
-  ADD COLUMN IF NOT EXISTS atoll text;
+  ADD COLUMN IF NOT EXISTS code     text,
+  ADD COLUMN IF NOT EXISTS atoll_id uuid REFERENCES public.atolls(id);
+
+-- Unique index on code (separate statement so IF NOT EXISTS is safe
+-- even if the column was added in a prior partial run).
+CREATE UNIQUE INDEX IF NOT EXISTS companies_code_unique
+  ON public.companies (code)
+  WHERE code IS NOT NULL;
 
 
 -- ─────────────────────────────────────────────────────────────
@@ -113,6 +123,20 @@ ALTER TABLE public.pricing_standard
     FOREIGN KEY (point_a_id) REFERENCES public.companies(id),
   ADD CONSTRAINT pricing_standard_point_b_id_fkey
     FOREIGN KEY (point_b_id) REFERENCES public.companies(id);
+
+-- ─────────────────────────────────────────────────────────────
+-- D8 follow-up: destinations table
+--     The destinations table was defined in migration 1 and seeded
+--     with airport/resort rows.  No destinations.xlsx exists in
+--     public/data/ and point_a/b_id now reference companies instead.
+--     The table is kept for historical reference but is no longer
+--     part of the active data model.  Do NOT drop it yet — confirm
+--     with the team that no code path queries it before removing.
+-- ─────────────────────────────────────────────────────────────
+COMMENT ON TABLE public.destinations IS
+  'Legacy table — superseded by companies.  '
+  'point_a_id/point_b_id in pricing_standard now reference companies(id).  '
+  'Verify no active queries before dropping.';
 
 
 -- ─────────────────────────────────────────────────────────────
