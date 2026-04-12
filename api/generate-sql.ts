@@ -1,0 +1,134 @@
+/**
+ * Vercel Edge Function — OpenAI SQL generation proxy.
+ *
+ * Keeps the OPENAI_API_KEY server-side so it is never exposed to the browser.
+ * Set the environment variable in Vercel → Project Settings → Environment Variables.
+ *
+ * POST /api/generate-sql
+ * Body: { userQuery: string }
+ * Response: { sql: string, explanation: string } | { error: string }
+ */
+
+export const config = { runtime: "edge" };
+
+// ── Static schema definition (mirrors sqlEngine.ts TABLE_COLUMNS) ─────────
+const TABLE_COLUMNS: Record<string, string[]> = {
+  companies: ["id", "name", "type", "code", "atoll_id", "address", "registration_no", "coordinates", "created_at"],
+  atolls: ["id", "name", "created_at"],
+  contracts: ["id", "contract_id", "sub_contract_id", "contract_code", "group_id", "resort_id", "sub_contract_type", "status", "start_date", "end_date", "created_at"],
+  pricing_standard: ["id", "sub_contract_id", "season_type", "season_name", "route", "weekdays", "start_date", "end_date", "created_at"],
+  pricing_special: ["id", "sub_contract_id", "request_type", "discount_type", "return_fare_usd", "one_way_fare_usd", "pax_condition", "start_date", "end_date", "created_at"],
+  contract_baggage: ["id", "sub_contract_id", "baggage_allowance_kg", "excess_charge_usd", "notes", "created_at"],
+  contract_booking: ["id", "sub_contract_id", "booking_lead_time_days", "cancellation_policy", "amendment_policy", "notes", "created_at"],
+  contract_age: ["id", "sub_contract_id", "infant_age_max", "child_age_max", "junior_age_max", "youth_age_max", "notes", "created_at"],
+  contract_addons: ["id", "sub_contract_id", "addon_type", "description", "price_usd", "currency", "notes", "created_at"],
+  contract_insurance: ["id", "sub_contract_id", "insurance_required", "provider", "coverage_details", "notes", "created_at"],
+  contract_government_charges: ["id", "sub_contract_id", "charge_type", "amount", "currency", "applicable_to", "notes", "created_at"],
+  contract_fuel: ["id", "sub_contract_id", "fuel_surcharge_type", "value", "currency", "notes", "created_at"],
+  contract_payment_plan: ["id", "sub_contract_id", "payment_terms", "deposit_percentage", "balance_due_days", "notes", "created_at"],
+  contract_service_commitment: ["id", "sub_contract_id", "commitment_type", "minimum_seats", "notes", "created_at"],
+  contract_termination: ["id", "sub_contract_id", "termination_notice_days", "termination_conditions", "notes", "created_at"],
+  contract_notes: ["id", "sub_contract_id", "note_type", "content", "created_at"],
+};
+
+function buildSchema(): string {
+  return Object.entries(TABLE_COLUMNS)
+    .map(([table, cols]) => `Table: ${table}\n  Columns: ${cols.join(", ")}`)
+    .join("\n\n");
+}
+
+const SYSTEM_PROMPT = `You are a SQL query generator for a contract management system (Trans Maldivian Airways). The database runs entirely in the browser using a custom SQL engine.
+
+## Supported SQL syntax
+- SELECT * | col1, col2, COUNT(*), COUNT(col)
+- FROM table_name [alias]
+- JOIN table2 [alias] ON table1.col = table2.col
+- WHERE conditions (AND, OR, =, !=, <>, <, >, <=, >=, LIKE, IN, NOT IN, IS NULL, IS NOT NULL, BETWEEN)
+- GROUP BY col1, col2
+- ORDER BY col [ASC|DESC]
+- LIMIT n
+
+## Important constraints
+- Only SELECT queries are supported (no INSERT, UPDATE, DELETE, CREATE).
+- Table and column names are lowercase with underscores.
+- String values must be in single quotes.
+- Dates are stored as strings in 'YYYY-MM-DD' format.
+- The engine does NOT support subqueries, HAVING, UNION, DISTINCT, SUM, AVG, MIN, MAX. Only COUNT(*) and COUNT(col) are available as aggregate functions.
+- When joining, always use aliases (e.g., FROM contracts c JOIN companies r ON c.resort_id = r.id).
+
+## Database schema
+${buildSchema()}
+
+## Key relationships
+- contracts.resort_id → companies.id (resort)
+- contracts.group_id → companies.id (group)
+- pricing_standard.sub_contract_id → contracts.sub_contract_id
+- pricing_special.sub_contract_id → contracts.sub_contract_id
+- contract_* tables link via sub_contract_id to contracts
+- companies.type can be 'Resort', 'Group', or 'Carrier'
+
+## Response format
+Respond ONLY with valid JSON (no markdown fences, no extra text):
+{"sql": "THE SQL QUERY HERE", "explanation": "Brief explanation of what the query does"}`;
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const apiKey = (process.env as Record<string, string | undefined>).OPENAI_API_KEY;
+  if (!apiKey) {
+    return json({ error: "AI query generation is not configured on this server. Set OPENAI_API_KEY in Vercel environment variables." }, 503);
+  }
+
+  let body: { userQuery?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const userQuery = body.userQuery?.trim();
+  if (!userQuery) return json({ error: "userQuery is required" }, 400);
+
+  try {
+    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0,
+        max_tokens: 1024,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userQuery },
+        ],
+      }),
+    });
+
+    if (!openaiRes.ok) {
+      if (openaiRes.status === 401) return json({ error: "Invalid OpenAI API key on server." }, 502);
+      if (openaiRes.status === 429) return json({ error: "Rate limit exceeded. Please try again shortly." }, 429);
+      const errBody = await openaiRes.json().catch(() => ({})) as { error?: { message?: string } };
+      return json({ error: errBody?.error?.message ?? "OpenAI request failed." }, 502);
+    }
+
+    const data = await openaiRes.json() as { choices: Array<{ message: { content: string } }> };
+    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+    const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed = JSON.parse(cleaned) as { sql?: string; explanation?: string };
+
+    return json({ sql: parsed.sql ?? "", explanation: parsed.explanation ?? "" });
+  } catch (err) {
+    if (err instanceof SyntaxError) return json({ error: "Failed to parse AI response. Please try rephrasing." }, 502);
+    return json({ error: "Unexpected error contacting AI service." }, 500);
+  }
+}

@@ -1,10 +1,13 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "./supabase";
 
 export type Role = "Admin" | "Editor" | "Viewer";
 
 interface RoleContextValue {
-  role: Role;
-  setRole: (role: Role) => void;
+  role: Role;         // active role (dbRole, or admin preview)
+  dbRole: Role;       // authoritative role fetched from Supabase
+  setPreviewRole: (r: Role | null) => void;  // Admin-only: preview as another role
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -12,23 +15,44 @@ interface RoleContextValue {
 
 const RoleContext = createContext<RoleContextValue | null>(null);
 
-export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<Role>(() => {
-    const stored = localStorage.getItem("tma_role");
-    if (stored === "Admin" || stored === "Editor" || stored === "Viewer") return stored;
-    return "Admin";
-  });
+function isValidRole(r: unknown): r is Role {
+  return r === "Admin" || r === "Editor" || r === "Viewer";
+}
 
-  const handleSetRole = (r: Role) => {
-    setRole(r);
-    localStorage.setItem("tma_role", r);
-  };
+export function RoleProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [dbRole, setDbRole]           = useState<Role>("Viewer");
+  const [previewRole, setPreviewRole] = useState<Role | null>(null);
+
+  useEffect(() => {
+    setPreviewRole(null);
+
+    if (!user) {
+      setDbRole("Viewer");
+      return;
+    }
+
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setDbRole(isValidRole(data?.role) ? data!.role : "Viewer");
+      });
+  }, [user?.id]);
+
+  const role = previewRole ?? dbRole;
 
   const value: RoleContextValue = {
     role,
-    setRole: handleSetRole,
+    dbRole,
+    setPreviewRole: (r) => {
+      // Only Admins may preview other roles
+      if (dbRole === "Admin") setPreviewRole(r);
+    },
     canCreate: role === "Admin" || role === "Editor",
-    canEdit: role === "Admin" || role === "Editor",
+    canEdit:   role === "Admin" || role === "Editor",
     canDelete: role === "Admin",
   };
 

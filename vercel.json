@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!data/).*)",
+      "source": "/((?!data/|api/).*)",
       "destination": "/index.html"
     }
   ],
@@ -15,7 +15,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; media-src 'none'; connect-src 'self' https://api.openai.com https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://raw.githubusercontent.com https://*.supabase.co; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; media-src 'none'; connect-src 'self' https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://raw.githubusercontent.com https://*.supabase.co; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
         },
         {
           "key": "X-Frame-Options",

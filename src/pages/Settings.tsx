@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings as SettingsIcon, Plus, X, Lock, Key, Eye, EyeOff, Check } from "lucide-react";
+import { Settings as SettingsIcon, Plus, X, Key, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableSettingsModal } from "@/components/settings/TableSettingsModal";
@@ -8,7 +8,6 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import type { Atoll } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
-import { getOpenAIKey, setOpenAIKey, hasOpenAIKey } from "@/lib/openaiSqlService";
 import { motion } from "framer-motion";
 import { ScrollReveal } from "@/components/ui/motion";
 
@@ -24,25 +23,9 @@ const item = {
 export default function SettingsPage() {
   const [showTableSettings, setShowTableSettings] = useState(false);
   const [newAtoll, setNewAtoll] = useState("");
-  const [apiKeyInput, setApiKeyInput] = useState(getOpenAIKey());
-  const [showKey, setShowKey] = useState(false);
-  const [keySaved, setKeySaved] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { role, canCreate, canDelete } = useRole();
-
-  const handleSaveKey = () => {
-    setOpenAIKey(apiKeyInput);
-    setKeySaved(true);
-    setTimeout(() => setKeySaved(false), 2000);
-    toast({ title: apiKeyInput.trim() ? "API key saved" : "API key removed" });
-  };
-
-  const handleRemoveKey = () => {
-    setApiKeyInput("");
-    setOpenAIKey("");
-    toast({ title: "API key removed" });
-  };
 
   const { data: atolls } = useQuery({
     queryKey: ["atolls"],
@@ -98,56 +81,24 @@ export default function SettingsPage() {
       </motion.div>
 
       <ScrollReveal>
-        <div className="glass-card p-6 space-y-4">
+        <div className="glass-card p-6 space-y-3">
           <div>
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Key className="h-5 w-5 text-primary" />
               OpenAI Integration
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Connect your OpenAI API key to power the AI Query Guide in the Query module. Without a key, the Query Guide falls back to basic pattern matching.
+              AI-powered query generation is configured server-side via the <code className="text-xs bg-secondary px-1 py-0.5 rounded">OPENAI_API_KEY</code> environment variable in Vercel.
             </p>
           </div>
-          <div className="flex gap-2 items-center">
-            <div className="relative max-w-md flex-1">
-              <Input
-                type={showKey ? "text" : "password"}
-                placeholder="sk-..."
-                value={apiKeyInput}
-                onChange={(e) => { setApiKeyInput(e.target.value); setKeySaved(false); }}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveKey()}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <Button onClick={handleSaveKey} className="btn-gradient-primary" disabled={keySaved}>
-              {keySaved ? <><Check className="h-4 w-4 mr-2" /> Saved</> : "Save Key"}
-            </Button>
-            {hasOpenAIKey() && (
-              <Button variant="outline" onClick={handleRemoveKey} className="text-destructive hover:text-destructive">
-                Remove
-              </Button>
-            )}
-          </div>
-          {hasOpenAIKey() && (
-            <motion.p
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-xs text-emerald-500 flex items-center gap-1.5"
-            >
-              <Check className="h-3.5 w-3.5" />
-              API key configured — AI-powered query generation is active
-            </motion.p>
-          )}
-          <p className="text-[11px] text-muted-foreground">
-            Your key is stored locally in the browser and never sent to any server other than OpenAI's API.
-          </p>
+          <motion.p
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-xs text-emerald-500 flex items-center gap-1.5"
+          >
+            <Check className="h-3.5 w-3.5" />
+            AI Query Guide is active — no browser-side key required
+          </motion.p>
         </div>
       </ScrollReveal>
 

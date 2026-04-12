@@ -3,18 +3,16 @@ import { useToast } from "@/hooks/use-toast";
 import { selectAll, insertRow, updateRow, deleteRow } from "@/lib/db";
 import type { Company } from "@/types";
 
-/** Look up an atoll UUID by its display name. Returns null if not found. */
-async function resolveAtollId(name: string): Promise<string | null> {
-  const atolls = await selectAll("atolls");
-  const found = (atolls as Array<{ id: string; name: string }>).find(
-    (a) => a.name === name
-  );
-  return found?.id ?? null;
-}
-
 export function useCompanies() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  /** Look up an atoll UUID by name — uses React Query cache when available. */
+  const resolveAtollId = async (name: string): Promise<string | null> => {
+    const cached = queryClient.getQueryData<Array<{ id: string; name: string }>>(["atolls"]);
+    const atolls = cached ?? (await selectAll<{ id: string; name: string }>("atolls"));
+    return atolls.find((a) => a.name === name)?.id ?? null;
+  };
 
   const query = useQuery({
     queryKey: ["companies"],
@@ -79,7 +77,6 @@ export function useCompanies() {
       toast({ title: "Company created successfully" });
     },
     onError: (error: Error) => {
-      console.error("Error:", error);
       toast({ title: "Operation failed", description: "Unable to create company. Please try again.", variant: "destructive" });
     },
   });
@@ -97,7 +94,6 @@ export function useCompanies() {
       toast({ title: "Company updated successfully" });
     },
     onError: (error: Error) => {
-      console.error("Error:", error);
       toast({ title: "Operation failed", description: "Unable to update company. Please try again.", variant: "destructive" });
     },
   });
@@ -111,7 +107,6 @@ export function useCompanies() {
       toast({ title: "Company deleted successfully" });
     },
     onError: (error: Error) => {
-      console.error("Error:", error);
       toast({ title: "Operation failed", description: "Unable to delete company. Please try again.", variant: "destructive" });
     },
   });

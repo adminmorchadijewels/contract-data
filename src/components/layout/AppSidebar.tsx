@@ -14,6 +14,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { useRole, type Role } from "@/lib/RoleContext";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ const navItemVariant = {
 
 export function AppSidebar() {
   const toggleDark = () => document.documentElement.classList.toggle("dark");
-  const { role, setRole } = useRole();
+  const { role, dbRole, setPreviewRole } = useRole();
   const config = roleConfig[role];
   const location = useLocation();
 
@@ -123,37 +124,51 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-3 space-y-3">
         <div className="space-y-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Access Role</span>
-          <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-            <SelectTrigger className={`h-9 text-xs font-medium ${config.bg} ${config.border} border`}>
-              <div className="flex items-center gap-2">
-                <config.icon className={`h-3.5 w-3.5 shrink-0 ${config.color}`} />
-                <span>{role}</span>
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Admin">
+          {dbRole === "Admin" ? (
+            // Admins can preview as other roles to test the UI
+            <Select value={role} onValueChange={(v) => setPreviewRole(v === dbRole ? null : v as Role)}>
+              <SelectTrigger className={`h-9 text-xs font-medium ${config.bg} ${config.border} border`}>
                 <div className="flex items-center gap-2">
-                  <Shield className="h-3.5 w-3.5 text-red-500" />
-                  <span>Admin</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">Full access</span>
+                  <config.icon className={`h-3.5 w-3.5 shrink-0 ${config.color}`} />
+                  <span>{role}{role !== dbRole && <span className="ml-1 opacity-60">(preview)</span>}</span>
                 </div>
-              </SelectItem>
-              <SelectItem value="Editor">
-                <div className="flex items-center gap-2">
-                  <PenLine className="h-3.5 w-3.5 text-blue-500" />
-                  <span>Editor</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">No delete</span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Admin">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-3.5 w-3.5 text-red-500" />
+                    <span>Admin</span>
+                    <span className="text-[10px] text-muted-foreground ml-1">Full access</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="Editor">
+                  <div className="flex items-center gap-2">
+                    <PenLine className="h-3.5 w-3.5 text-blue-500" />
+                    <span>Editor</span>
+                    <span className="text-[10px] text-muted-foreground ml-1">No delete</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="Viewer">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>Viewer</span>
+                    <span className="text-[10px] text-muted-foreground ml-1">Read only</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            // Non-admins: read-only role badge
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={`h-9 px-3 flex items-center gap-2 rounded-md text-xs font-medium ${config.bg} ${config.border} border cursor-default`}>
+                  <config.icon className={`h-3.5 w-3.5 shrink-0 ${config.color}`} />
+                  <span>{role}</span>
                 </div>
-              </SelectItem>
-              <SelectItem value="Viewer">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-3.5 w-3.5 text-emerald-500" />
-                  <span>Viewer</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">Read only</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+              </TooltipTrigger>
+              <TooltipContent>Your role is assigned by an administrator</TooltipContent>
+            </Tooltip>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <motion.div whileTap={{ scale: 0.9 }}>

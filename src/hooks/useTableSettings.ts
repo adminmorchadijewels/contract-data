@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { selectWhere, upsertRow } from "@/lib/db";
+import { useAuth } from "@/context/AuthContext";
 
 export interface ColumnConfig {
   key: string;
@@ -37,16 +38,18 @@ export const DEFAULT_COLUMNS: Record<string, ColumnConfig[]> = {
   ],
 };
 
-const LOCAL_USER_ID = "local-user";
-
 export function useTableSettings() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ["table_settings", LOCAL_USER_ID],
+    queryKey: ["table_settings", userId],
     queryFn: async () => {
-      return selectWhere("table_settings", "user_id", LOCAL_USER_ID);
+      if (!userId) return [];
+      return selectWhere("table_settings", "user_id", userId);
     },
+    enabled: !!userId,
   });
 
   const getSettingsForTable = (tableName: string): TableSetting => {
@@ -77,10 +80,11 @@ export function useTableSettings() {
 
   const upsertMutation = useMutation({
     mutationFn: async (setting: TableSetting) => {
+      if (!userId) return;
       await upsertRow(
         "table_settings",
         {
-          user_id: LOCAL_USER_ID,
+          user_id: userId,
           table_name: setting.table_name,
           visible: setting.visible,
           column_config: setting.column_config,
