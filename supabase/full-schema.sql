@@ -110,7 +110,7 @@ CREATE POLICY "Authenticated access" ON public.destinations
 -- ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.contracts (
   id               uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  contract_id      text        UNIQUE NOT NULL,
+  contract_id      text        NOT NULL,
   contract_code    text        NOT NULL,
   carrier_id       text        DEFAULT 'TMA101',
   group_id         uuid        REFERENCES public.companies(id),
