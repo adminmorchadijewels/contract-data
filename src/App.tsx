@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { Component, type ReactNode, type ErrorInfo } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +19,40 @@ import LoginPage from "./pages/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
+
+// ── Error Boundary ────────────────────────────────────────────────────────────
+interface ErrorBoundaryState { hasError: boolean; message: string }
+class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: "" };
+  }
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, message: error.message };
+  }
+  componentDidCatch(_error: Error, info: ErrorInfo) {
+    console.error("Uncaught error:", info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-8">
+          <div className="max-w-md text-center space-y-4">
+            <h1 className="text-2xl font-bold text-foreground">Something went wrong</h1>
+            <p className="text-sm text-muted-foreground font-mono bg-secondary/50 p-3 rounded-lg">{this.state.message}</p>
+            <button
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
+              onClick={() => window.location.reload()}
+            >
+              Reload page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -65,33 +99,8 @@ function AppLayout() {
 }
 
 const App = () => {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setReady(true);
-  }, []);
-
-  if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="flex flex-col items-center gap-3"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full"
-          />
-          <p className="text-muted-foreground text-sm">Loading data...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
+    <ErrorBoundary>
     <AuthProvider>
     <RoleProvider>
       <QueryClientProvider client={queryClient}>
@@ -115,6 +124,7 @@ const App = () => {
       </QueryClientProvider>
     </RoleProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

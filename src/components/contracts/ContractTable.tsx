@@ -13,7 +13,7 @@ import { useTableSettings } from "@/hooks/useTableSettings";
 import { KPICards } from "./KPICards";
 import { ContractForm } from "./ContractForm";
 import { ContractDetailModal } from "./ContractDetailModal";
-import { exportContractData } from "@/lib/excelDataService";
+import { exportContractDataAsync } from "@/lib/excelDataService";
 import { useRole } from "@/lib/RoleContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal } from "@/components/ui/motion";
@@ -193,7 +193,7 @@ export function ContractTable() {
             <SelectItem value="Signed Charter">Signed Charter</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" className="rounded-lg" onClick={exportContractData}>
+        <Button variant="outline" className="rounded-lg" onClick={() => exportContractDataAsync()}>
           <Download className="h-4 w-4 mr-2" /> Export
         </Button>
         {canCreate && (

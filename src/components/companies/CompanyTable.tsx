@@ -12,7 +12,7 @@ import { useRole } from "@/lib/RoleContext";
 import type { Company } from "@/types";
 import { CompanyForm } from "./CompanyForm";
 import { CompanyDeleteDialog } from "./CompanyDeleteDialog";
-import { exportResortData } from "@/lib/excelDataService";
+import { exportResortDataAsync } from "@/lib/excelDataService";
 import { motion } from "framer-motion";
 import { AnimatedCounter, HoverCard, ScrollReveal } from "@/components/ui/motion";
 
@@ -166,7 +166,7 @@ export function CompanyTable() {
           <h2 className="text-2xl font-bold text-foreground">Resort Data</h2>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="rounded-lg" onClick={exportResortData}>
+          <Button variant="outline" className="rounded-lg" onClick={() => exportResortDataAsync()}>
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
           {canCreate && (

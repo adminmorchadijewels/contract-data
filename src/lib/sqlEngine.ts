@@ -11,7 +11,7 @@
  *   [LIMIT n]
  */
 
-import { selectAll, type TableName } from "./excelDataService";
+import { selectAll, type TableName } from "./db";
 
 // ── Public types ────────────────────────────────────────────────────
 export interface QueryResult {
@@ -31,6 +31,27 @@ const VALID_TABLES: string[] = [
   "contract_fuel", "contract_payment_plan", "contract_service_commitment",
   "contract_termination", "contract_notes", "table_settings",
 ];
+
+// Static column definitions derived from the database schema
+const TABLE_COLUMNS: Record<string, string[]> = {
+  companies: ["id", "name", "type", "code", "atoll_id", "address", "registration_no", "coordinates", "created_at"],
+  atolls: ["id", "name", "created_at"],
+  contracts: ["id", "contract_id", "sub_contract_id", "contract_code", "group_id", "resort_id", "sub_contract_type", "status", "start_date", "end_date", "created_at"],
+  pricing_standard: ["id", "sub_contract_id", "season_type", "season_name", "route", "weekdays", "start_date", "end_date", "created_at"],
+  pricing_special: ["id", "sub_contract_id", "request_type", "discount_type", "return_fare_usd", "one_way_fare_usd", "pax_condition", "start_date", "end_date", "created_at"],
+  contract_baggage: ["id", "sub_contract_id", "baggage_allowance_kg", "excess_charge_usd", "notes", "created_at"],
+  contract_booking: ["id", "sub_contract_id", "booking_lead_time_days", "cancellation_policy", "amendment_policy", "notes", "created_at"],
+  contract_age: ["id", "sub_contract_id", "infant_age_max", "child_age_max", "junior_age_max", "youth_age_max", "notes", "created_at"],
+  contract_addons: ["id", "sub_contract_id", "addon_type", "description", "price_usd", "currency", "notes", "created_at"],
+  contract_insurance: ["id", "sub_contract_id", "insurance_required", "provider", "coverage_details", "notes", "created_at"],
+  contract_government_charges: ["id", "sub_contract_id", "charge_type", "amount", "currency", "applicable_to", "notes", "created_at"],
+  contract_fuel: ["id", "sub_contract_id", "fuel_surcharge_type", "value", "currency", "notes", "created_at"],
+  contract_payment_plan: ["id", "sub_contract_id", "payment_terms", "deposit_percentage", "balance_due_days", "notes", "created_at"],
+  contract_service_commitment: ["id", "sub_contract_id", "commitment_type", "minimum_seats", "notes", "created_at"],
+  contract_termination: ["id", "sub_contract_id", "termination_notice_days", "termination_conditions", "notes", "created_at"],
+  contract_notes: ["id", "sub_contract_id", "note_type", "content", "created_at"],
+  table_settings: ["id", "user_id", "table_name", "visible", "column_config", "created_at"],
+};
 
 // ── Tokeniser helpers ───────────────────────────────────────────────
 
@@ -423,7 +444,7 @@ function evaluateCondition(row: Record<string, unknown>, tokens: string[], alias
 
 // ── Main executor ───────────────────────────────────────────────────
 
-export function executeQuery(sql: string): QueryResult {
+export async function executeQuery(sql: string): Promise<QueryResult> {
   const start = performance.now();
 
   try {
@@ -432,12 +453,12 @@ export function executeQuery(sql: string): QueryResult {
     aliases.set(parsed.fromAlias, parsed.fromTable);
 
     // Load base table
-    let rows = selectAll(parsed.fromTable as TableName).map(r => ({ ...r }));
+    let rows = (await selectAll(parsed.fromTable as TableName)).map(r => ({ ...(r as Record<string, unknown>) }));
 
     // Apply JOINs
     for (const join of parsed.joins) {
       aliases.set(join.alias, join.table);
-      const joinData = selectAll(join.table as TableName);
+      const joinData = await selectAll(join.table as TableName);
 
       // Resolve column references (handle alias.col)
       const resolveJoinCol = (col: string) => {
@@ -616,8 +637,5 @@ export function getTableNames(): string[] {
 }
 
 export function getTableColumns(tableName: string): string[] {
-  if (!VALID_TABLES.includes(tableName)) return [];
-  const rows = selectAll(tableName as TableName);
-  if (rows.length === 0) return [];
-  return Object.keys(rows[0]);
+  return TABLE_COLUMNS[tableName] ?? [];
 }

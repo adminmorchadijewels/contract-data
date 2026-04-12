@@ -14,8 +14,6 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  /** Set when a sign-in is rejected by the allowlist (not just the domain). */
-  notAuthorised: boolean;
 }
 
 // ── Context ──────────────────────────────────────────────────────────────────
@@ -24,7 +22,6 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   session: null,
   loading: true,
-  notAuthorised: false,
 });
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
@@ -45,7 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<User | null>(null);
   const [session, setSession]         = useState<Session | null>(null);
   const [loading, setLoading]         = useState(true);
-  const [notAuthorised, setNotAuthorised] = useState(false);
 
   useEffect(() => {
     // ── Rehydrate persisted session on mount ────────────────────────────────
@@ -83,13 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === "SIGNED_IN" || event === "USER_UPDATED") {
           const ok = checkAuthorised(u.email ?? "");
           if (!ok) {
-            // Authenticated by Supabase but not on the allowlist
-            setNotAuthorised(true);
             await supabase.auth.signOut();
             clearSessionCookie();
             return;
           }
-          setNotAuthorised(false);
           setUser(u);
           setSession(s);
           setSessionCookie();
@@ -106,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, notAuthorised }}>
+    <AuthContext.Provider value={{ user, session, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,4 @@
-import { selectAll, type TableName } from "./excelDataService";
+import { selectAll } from "./db";
 
 // ─── Ollama Configuration ─────────────────────────────────────────
 const OLLAMA_BASE_URL = "http://localhost:11434";
@@ -30,10 +30,12 @@ export async function checkOllamaStatus(): Promise<OllamaStatus> {
 }
 
 // ─── Build Context from Contract Data ─────────────────────────────
-function buildDataContext(): string {
-  const companies = selectAll("companies");
-  const contracts = selectAll("contracts");
-  const atolls = selectAll("atolls");
+async function buildDataContext(): Promise<string> {
+  const [companies, contracts, atolls] = await Promise.all([
+    selectAll("companies"),
+    selectAll("contracts"),
+    selectAll("atolls"),
+  ]);
 
   const summary = [
     `Database Summary:`,
@@ -41,9 +43,9 @@ function buildDataContext(): string {
     `- ${contracts.length} contract records`,
     `- ${atolls.length} atolls`,
     ``,
-    `Companies: ${companies.map((c) => `${c.name} (${c.type}, code: ${c.code || "N/A"})`).join("; ")}`,
+    `Companies: ${(companies as Record<string, unknown>[]).map((c) => `${c.name} (${c.type}, code: ${c.code || "N/A"})`).join("; ")}`,
     ``,
-    `Atolls: ${atolls.map((a) => a.name).join(", ")}`,
+    `Atolls: ${(atolls as Record<string, unknown>[]).map((a) => a.name).join(", ")}`,
     ``,
     `Contracts overview:`,
   ];
@@ -56,8 +58,8 @@ function buildDataContext(): string {
   return summary.join("\n");
 }
 
-function getSystemPrompt(): string {
-  const dataContext = buildDataContext();
+async function getSystemPrompt(): Promise<string> {
+  const dataContext = await buildDataContext();
   return `You are an AI assistant for TMA (Trans Maldivian Airways) Contract Management System. You help users understand and analyze their contract data.
 
 Here is the current data in the system:
@@ -79,7 +81,7 @@ export async function* streamChat(
   messages: ChatMessage[],
   model: string = DEFAULT_MODEL,
 ): AsyncGenerator<string> {
-  const systemMsg: ChatMessage = { role: "system", content: getSystemPrompt() };
+  const systemMsg: ChatMessage = { role: "system", content: await getSystemPrompt() };
 
   const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
     method: "POST",

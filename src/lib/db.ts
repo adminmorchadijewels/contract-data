@@ -67,3 +67,17 @@ export async function deleteWhere(
   const { error } = await supabase.from(table).delete().eq(field, value as string);
   if (error) throw new Error(error.message);
 }
+
+export async function upsertRow<T = Record<string, unknown>>(
+  table: TableName,
+  row: Partial<T>,
+  onConflict: string,
+): Promise<T> {
+  const { data, error } = await supabase
+    .from(table)
+    .upsert(row, { onConflict })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data as T;
+}

@@ -1,5 +1,5 @@
 import { CreateMLCEngine, type MLCEngine, type InitProgressReport } from "@mlc-ai/web-llm";
-import { selectAll } from "./excelDataService";
+import { selectAll } from "./db";
 
 // ─── Configuration ───────────────────────────────────────────────
 const DEFAULT_MODEL = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
@@ -61,10 +61,12 @@ export function unloadModel(): void {
 }
 
 // ─── Build Context from Contract Data ────────────────────────────
-function buildDataContext(): string {
-  const companies = selectAll("companies");
-  const contracts = selectAll("contracts");
-  const atolls = selectAll("atolls");
+async function buildDataContext(): Promise<string> {
+  const [companies, contracts, atolls] = await Promise.all([
+    selectAll("companies"),
+    selectAll("contracts"),
+    selectAll("atolls"),
+  ]);
 
   const summary = [
     `Database Summary:`,
@@ -72,9 +74,9 @@ function buildDataContext(): string {
     `- ${contracts.length} contract records`,
     `- ${atolls.length} atolls`,
     ``,
-    `Companies: ${companies.map((c) => `${c.name} (${c.type}, code: ${c.code || "N/A"})`).join("; ")}`,
+    `Companies: ${(companies as Record<string, unknown>[]).map((c) => `${c.name} (${c.type}, code: ${c.code || "N/A"})`).join("; ")}`,
     ``,
-    `Atolls: ${atolls.map((a) => a.name).join(", ")}`,
+    `Atolls: ${(atolls as Record<string, unknown>[]).map((a) => a.name).join(", ")}`,
     ``,
     `Contracts overview:`,
   ];
@@ -87,8 +89,8 @@ function buildDataContext(): string {
   return summary.join("\n");
 }
 
-function getSystemPrompt(): string {
-  const dataContext = buildDataContext();
+async function getSystemPrompt(): Promise<string> {
+  const dataContext = await buildDataContext();
   return `You are an AI assistant for TMA (Trans Maldivian Airways) Contract Management System. You help users understand and analyze their contract data.
 
 Here is the current data in the system:
@@ -111,7 +113,7 @@ export async function* streamChat(
 ): AsyncGenerator<string> {
   if (!engine) throw new Error("Model not loaded. Please load a model first.");
 
-  const systemMsg: ChatMessage = { role: "system", content: getSystemPrompt() };
+  const systemMsg: ChatMessage = { role: "system", content: await getSystemPrompt() };
 
   const reply = await engine.chat.completions.create({
     messages: [systemMsg, ...messages],

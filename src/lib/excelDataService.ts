@@ -192,6 +192,34 @@ export function exportContractData(): void {
   XLSX.writeFile(wb, "tma_contracts_data.xlsx");
 }
 
+// ─── Async export functions that fetch from Supabase ─────────────────────────
+
+async function addTableSheetAsync(wb: XLSX.WorkBook, table: TableName): Promise<void> {
+  const { selectAll } = await import("./db");
+  const rows = await selectAll(table);
+  const flatData = (rows as Record<string, unknown>[]).map((r) => {
+    const flat: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(r)) {
+      flat[key] = Array.isArray(val) ? JSON.stringify(val) : val;
+    }
+    return flat;
+  });
+  const ws = XLSX.utils.json_to_sheet(flatData);
+  XLSX.utils.book_append_sheet(wb, ws, table);
+}
+
+export async function exportResortDataAsync(): Promise<void> {
+  const wb = XLSX.utils.book_new();
+  for (const table of RESORT_TABLES) await addTableSheetAsync(wb, table);
+  XLSX.writeFile(wb, "tma_resort_data.xlsx");
+}
+
+export async function exportContractDataAsync(): Promise<void> {
+  const wb = XLSX.utils.book_new();
+  for (const table of CONTRACT_TABLES) await addTableSheetAsync(wb, table);
+  XLSX.writeFile(wb, "tma_contracts_data.xlsx");
+}
+
 // ─── Load Data from Excel files in public/data/ ─────────────────────
 
 const SEED_TABLES: TableName[] = [

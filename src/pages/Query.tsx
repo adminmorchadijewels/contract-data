@@ -35,6 +35,7 @@ const fadeItem = {
 export default function QueryPage() {
   const [sql, setSql] = useState("SELECT * FROM companies\nORDER BY name\nLIMIT 50");
   const [result, setResult] = useState<QueryResult | null>(null);
+  const [queryLoading, setQueryLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<{ sql: string; rowCount: number; ms: number }[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -103,28 +104,37 @@ export default function QueryPage() {
     setTimeout(() => textareaRef.current?.focus(), 50);
   }, [nlResult]);
 
-  const runQuery = useCallback(() => {
+  const runQuery = useCallback(async () => {
     const trimmed = sql.trim();
     if (!trimmed) return;
-    const r = executeQuery(trimmed);
-    setResult(r);
-    if (!r.error) {
-      setHistory(prev => [{ sql: trimmed, rowCount: r.rowCount, ms: r.executionMs }, ...prev].slice(0, 20));
+    setQueryLoading(true);
+    try {
+      const r = await executeQuery(trimmed);
+      setResult(r);
+      if (!r.error) {
+        setHistory(prev => [{ sql: trimmed, rowCount: r.rowCount, ms: r.executionMs }, ...prev].slice(0, 20));
+      }
+    } finally {
+      setQueryLoading(false);
     }
   }, [sql]);
 
-  const useAndRun = useCallback(() => {
+  const useAndRun = useCallback(async () => {
     if (!nlResult?.sql) return;
     const generatedSql = nlResult.sql;
     setSql(generatedSql);
     setNlResult(null);
     setNlInput("");
     setShowGuide(false);
-    // Execute directly with the generated SQL (not from state)
-    const r = executeQuery(generatedSql);
-    setResult(r);
-    if (!r.error) {
-      setHistory(prev => [{ sql: generatedSql, rowCount: r.rowCount, ms: r.executionMs }, ...prev].slice(0, 20));
+    setQueryLoading(true);
+    try {
+      const r = await executeQuery(generatedSql);
+      setResult(r);
+      if (!r.error) {
+        setHistory(prev => [{ sql: generatedSql, rowCount: r.rowCount, ms: r.executionMs }, ...prev].slice(0, 20));
+      }
+    } finally {
+      setQueryLoading(false);
     }
   }, [nlResult]);
 
@@ -450,8 +460,8 @@ export default function QueryPage() {
                 <Button variant="outline" size="sm" onClick={() => { setSql(""); setResult(null); }}>
                   <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear
                 </Button>
-                <Button className="btn-gradient-primary" size="sm" onClick={runQuery}>
-                  <Play className="h-3.5 w-3.5 mr-1.5" /> Run Query
+                <Button className="btn-gradient-primary" size="sm" onClick={runQuery} disabled={queryLoading}>
+                  {queryLoading ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Running...</> : <><Play className="h-3.5 w-3.5 mr-1.5" /> Run Query</>}
                 </Button>
               </div>
             </div>

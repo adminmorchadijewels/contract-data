@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { selectWhere, insertRow, updateRow } from "@/lib/db";
+import { selectWhere, upsertRow } from "@/lib/db";
 
 export interface ColumnConfig {
   key: string;
@@ -77,17 +77,16 @@ export function useTableSettings() {
 
   const upsertMutation = useMutation({
     mutationFn: async (setting: TableSetting) => {
-      const payload = {
-        user_id: LOCAL_USER_ID,
-        table_name: setting.table_name,
-        visible: setting.visible,
-        column_config: setting.column_config,
-      };
-      if (setting.id) {
-        await updateRow("table_settings", setting.id, payload);
-      } else {
-        await insertRow("table_settings", payload);
-      }
+      await upsertRow(
+        "table_settings",
+        {
+          user_id: LOCAL_USER_ID,
+          table_name: setting.table_name,
+          visible: setting.visible,
+          column_config: setting.column_config,
+        },
+        "user_id,table_name",
+      );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["table_settings"] }),
   });

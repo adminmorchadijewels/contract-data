@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
 import type { ContractDetail, PricingSpecialRow } from "@/types";
 
-const REQUEST_TYPES = ["Management", "Staff", "Service providers", "FAM trips", "Tour Operators", "Tour Guides", "Journalists", "Advertisers", "Others"] as const;
+const REQUEST_TYPES = ["Management", "Staff", "Service providers", "FAM trips", "Tour Operators", "Tour Guides", "Journalists", "Advertisers", "VIP Guest", "Others"] as const;
 
 interface Props { contract: ContractDetail; }
 
