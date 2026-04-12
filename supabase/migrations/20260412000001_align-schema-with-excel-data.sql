@@ -22,7 +22,7 @@
 -- ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.atolls (
   id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  name       text        NOT NULL,
+  name       text        NOT NULL UNIQUE,   -- seeding script resolves name → id
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
