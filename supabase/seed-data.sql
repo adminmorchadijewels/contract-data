@@ -6,8 +6,28 @@
 -- Instructions:
 --   Paste this entire file into Supabase SQL Editor and Run.
 --   Schema must already be applied (supabase/full-schema.sql).
---   Safe to re-run — uses INSERT ... ON CONFLICT DO UPDATE.
+--   TRUNCATES all tables first, then inserts fresh data.
 -- ============================================================
+
+-- ── Truncate all tables (reverse FK order) ──────────────────
+TRUNCATE TABLE
+  public.contract_notes,
+  public.contract_termination,
+  public.contract_service_commitment,
+  public.contract_payment_plan,
+  public.contract_fuel,
+  public.contract_government_charges,
+  public.contract_insurance,
+  public.contract_addons,
+  public.contract_age,
+  public.contract_booking,
+  public.contract_baggage,
+  public.pricing_special,
+  public.pricing_standard,
+  public.contracts,
+  public.companies,
+  public.atolls
+RESTART IDENTITY CASCADE;
 
 -- ── atolls (12 rows) ──────────────────────────────
 INSERT INTO public.atolls ("id", "created_at", "updated_at", "name")
@@ -23,10 +43,7 @@ VALUES
   ('3ff3b4ef-9b86-47b9-bc63-f3bb26ffc86f', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Meemu Atoll'),
   ('408b3a30-7da7-48de-a173-5a83d45f2794', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Laamu Atoll'),
   ('d0d40e87-6e2f-4d54-99de-9cf2e2c78d3f', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Gaafu Alifu Atoll'),
-  ('a4e5f5e1-7a3e-4428-8dfc-86bb3ff86450', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Addu Atoll')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "name" = EXCLUDED."name";
+  ('a4e5f5e1-7a3e-4428-8dfc-86bb3ff86450', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Addu Atoll');
 
 -- ── companies (15 rows) ──────────────────────────────
 INSERT INTO public.companies ("id", "created_at", "updated_at", "name", "code", "address", "registration_no", "coordinates", "type", "atoll_id")
@@ -45,16 +62,7 @@ VALUES
   ('a6635d78-8321-470b-ba54-19fb00ecc897', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Four Seasons Kuda Huraa', 'FSKH', 'Kuda Huraa Island, North Malé Atoll, Maldives', 'FK-2024-R07', '4.3300, 73.5900', 'Resort', 'c983362a-e407-41dc-ad5b-66e7bc09cc4b'),
   ('c4302238-45ab-437a-8e35-756858676994', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Anantara Kihavah Maldives', 'AKV', 'Kihavah Huravalhi, Baa Atoll, Maldives', 'AK-2024-R08', '5.3050, 73.0690', 'Resort', '0cf24454-7cc9-42b9-a277-594cd7494cbe'),
   ('7a7a2625-26bd-424d-acbe-9c84fc54ea85', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'The Ritz-Carlton Maldives Fari Islands', 'RCFI', 'Fari Islands, North Malé Atoll, Maldives', 'RC-2024-R09', '4.3150, 73.4750', 'Resort', 'c983362a-e407-41dc-ad5b-66e7bc09cc4b'),
-  ('a6317543-34f5-4949-96ef-e195ab1aa389', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Soneva Jani', 'SJ', 'Medhufaru Island, Noonu Atoll, Maldives', 'SJ-2024-R10', '5.7600, 73.3800', 'Resort', 'cd2b459a-a775-4a2a-8c9f-331b1a16acc5')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "name" = EXCLUDED."name",
-  "code" = EXCLUDED."code",
-  "address" = EXCLUDED."address",
-  "registration_no" = EXCLUDED."registration_no",
-  "coordinates" = EXCLUDED."coordinates",
-  "type" = EXCLUDED."type",
-  "atoll_id" = EXCLUDED."atoll_id";
+  ('a6317543-34f5-4949-96ef-e195ab1aa389', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'Soneva Jani', 'SJ', 'Medhufaru Island, Noonu Atoll, Maldives', 'SJ-2024-R10', '5.7600, 73.3800', 'Resort', 'cd2b459a-a775-4a2a-8c9f-331b1a16acc5');
 
 -- ── contracts (19 rows) ──────────────────────────────
 INSERT INTO public.contracts ("id", "created_at", "updated_at", "contract_id", "contract_code", "carrier_id", "group_id", "resort_id", "sub_contract_id", "sub_contract_type", "start_date", "end_date", "agreement_type")
@@ -77,19 +85,7 @@ VALUES
   ('593fada6-c6da-4a28-bd27-28a0ada37389', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008', 'MINT-AKV-2025', 'TMA101', '00814f5b-b883-4ca7-b853-b2667ab37505', 'c4302238-45ab-437a-8e35-756858676994', 'CTR-008-002', 'Transfer', '2025-10-01', '2026-09-30', 'Exclusive Seaplane (Day time)'),
   ('04bb15d6-9e8a-4631-b7e7-04dae158c4d2', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009', 'MAR-RCFI-2026', 'TMA101', '3878f7f2-c5c5-48c0-9178-4fed0b5ffef5', '7a7a2625-26bd-424d-acbe-9c84fc54ea85', 'CTR-009-001', 'Transfer', '2025-11-01', '2026-10-31', 'Exclusive Speedboat'),
   ('daca0df5-90b1-426b-b6e8-4afd695e1cd0', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010', 'SON-SJ-2024', 'TMA101', '777dac53-12bf-48ef-a913-ac3e14639321', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'CTR-010-001', 'Charter', '2024-03-01', '2025-02-28', 'Charter Agreement'),
-  ('7e24aec1-1b96-44df-bfc4-b54406625ab0', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010', 'SON-SJ-2024', 'TMA101', '777dac53-12bf-48ef-a913-ac3e14639321', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'CTR-010-002', 'Transfer', '2024-03-01', '2025-02-28', 'Exclusive Seaplane (Day time)')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "contract_id" = EXCLUDED."contract_id",
-  "contract_code" = EXCLUDED."contract_code",
-  "carrier_id" = EXCLUDED."carrier_id",
-  "group_id" = EXCLUDED."group_id",
-  "resort_id" = EXCLUDED."resort_id",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "sub_contract_type" = EXCLUDED."sub_contract_type",
-  "start_date" = EXCLUDED."start_date",
-  "end_date" = EXCLUDED."end_date",
-  "agreement_type" = EXCLUDED."agreement_type";
+  ('7e24aec1-1b96-44df-bfc4-b54406625ab0', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010', 'SON-SJ-2024', 'TMA101', '777dac53-12bf-48ef-a913-ac3e14639321', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'CTR-010-002', 'Transfer', '2024-03-01', '2025-02-28', 'Exclusive Seaplane (Day time)');
 
 -- ── pricing_standard (38 rows) ──────────────────────────────
 INSERT INTO public.pricing_standard ("id", "created_at", "updated_at", "sub_contract_id", "weekdays", "point_a_id", "point_b_id", "transfer_type", "pax_condition", "passenger_type", "return_fare_usd", "one_way_fare_usd", "start_date", "end_date")
@@ -131,20 +127,7 @@ VALUES
   ('b70083ef-9379-47c0-b3e9-936131584fb4', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', '["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'Seaplane', NULL, 'Adult', 710, 420, '2024-03-01', '2025-02-28'),
   ('f6ef7488-3648-499c-9a6a-152532c8deeb', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', '["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'Seaplane', 'Age 2-11', 'Child', 425, 252, '2024-03-01', '2025-02-28'),
   ('8e38815b-bd86-43fb-814f-55d6df7f699f', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', '["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'Seaplane', NULL, 'Adult', 550, 325, '2024-03-01', '2025-02-28'),
-  ('fb7d9445-dcb2-409e-9d05-42f071294ad5', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', '["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'Seaplane', 'Age 2-11', 'Child', 330, 195, '2024-03-01', '2025-02-28')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "weekdays" = EXCLUDED."weekdays",
-  "point_a_id" = EXCLUDED."point_a_id",
-  "point_b_id" = EXCLUDED."point_b_id",
-  "transfer_type" = EXCLUDED."transfer_type",
-  "pax_condition" = EXCLUDED."pax_condition",
-  "passenger_type" = EXCLUDED."passenger_type",
-  "return_fare_usd" = EXCLUDED."return_fare_usd",
-  "one_way_fare_usd" = EXCLUDED."one_way_fare_usd",
-  "start_date" = EXCLUDED."start_date",
-  "end_date" = EXCLUDED."end_date";
+  ('fb7d9445-dcb2-409e-9d05-42f071294ad5', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', '["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'a6317543-34f5-4949-96ef-e195ab1aa389', 'Seaplane', 'Age 2-11', 'Child', 330, 195, '2024-03-01', '2025-02-28');
 
 -- ── pricing_special (20 rows) ──────────────────────────────
 INSERT INTO public.pricing_special ("id", "created_at", "updated_at", "sub_contract_id", "request_type", "discount_type", "return_fare_usd", "one_way_fare_usd", "pax_condition", "start_date", "end_date")
@@ -168,17 +151,7 @@ VALUES
   ('deb4acad-764d-4e62-8d28-38ed1f1186bb', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-001', 'Tour Guides', 'Absolute', 200, 120, 'Licensed Maldives tour guides', '2025-10-01', '2027-09-30'),
   ('1926d4be-76c6-4626-a248-cffe755a5b70', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Staff', 'Absolute', 140, 85, 'Anantara resort staff', '2025-10-01', '2026-09-30'),
   ('30d0d506-39c6-4c13-8915-266b045908b3', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Staff', 'Absolute', 100, 60, 'RC staff with employee badge', '2025-11-01', '2026-10-31'),
-  ('379229b6-7a17-4a2e-ac74-a09a189016d1', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Advertisers', 'Percentage', 60, 60, 'Approved brand partners', '2025-11-01', '2026-10-31')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "request_type" = EXCLUDED."request_type",
-  "discount_type" = EXCLUDED."discount_type",
-  "return_fare_usd" = EXCLUDED."return_fare_usd",
-  "one_way_fare_usd" = EXCLUDED."one_way_fare_usd",
-  "pax_condition" = EXCLUDED."pax_condition",
-  "start_date" = EXCLUDED."start_date",
-  "end_date" = EXCLUDED."end_date";
+  ('379229b6-7a17-4a2e-ac74-a09a189016d1', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Advertisers', 'Percentage', 60, 60, 'Approved brand partners', '2025-11-01', '2026-10-31');
 
 -- ── contract_baggage (26 rows) ──────────────────────────────
 INSERT INTO public.contract_baggage ("id", "created_at", "updated_at", "sub_contract_id", "parameter", "value", "remark")
@@ -208,13 +181,7 @@ VALUES
   ('4fcc4a2e-5c24-4bf7-9bdb-603fa8fbb47b', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Checked baggage', '25 kg per adult', 'Standard seaplane'),
   ('208744eb-a9e0-4e31-87de-5781a9c7d970', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Checked baggage', '20 kg per adult', 'Speedboat transfer'),
   ('c8f3f8fc-b6c8-4c2b-9be5-4ba70553bc3d', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Checked baggage', '30 kg per adult', 'Soneva charter allowance'),
-  ('a3eac25c-d454-4c3a-b148-eefd4de523d7', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Checked baggage', '25 kg per adult', 'Standard seaplane')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "parameter" = EXCLUDED."parameter",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('a3eac25c-d454-4c3a-b148-eefd4de523d7', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Checked baggage', '25 kg per adult', 'Standard seaplane');
 
 -- ── contract_booking (23 rows) ──────────────────────────────
 INSERT INTO public.contract_booking ("id", "created_at", "updated_at", "sub_contract_id", "parameter", "value", "remark")
@@ -241,13 +208,7 @@ VALUES
   ('dad4d58c-f73b-4f28-9fb4-390d2c7a59da', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Advance booking', '48 hours minimum', NULL),
   ('57308cbc-eba8-435b-9af6-d86f3ec60ccd', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Advance booking', '24 hours minimum', 'Speedboat schedule'),
   ('f3fad190-ac88-4191-a358-1face13fc55f', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Charter booking', '72 hours minimum', 'Soneva concierge handles'),
-  ('eee1bbd0-5680-4c21-bf5f-a8fa1403949b', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Advance booking', '48 hours minimum', NULL)
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "parameter" = EXCLUDED."parameter",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('eee1bbd0-5680-4c21-bf5f-a8fa1403949b', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Advance booking', '48 hours minimum', NULL);
 
 -- ── contract_age (38 rows) ──────────────────────────────
 INSERT INTO public.contract_age ("id", "created_at", "updated_at", "sub_contract_id", "type", "min_age", "max_age")
@@ -289,13 +250,7 @@ VALUES
   ('1a17d5c3-0a52-4f5f-8f29-88d35e90d352', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Adult', 12, NULL),
   ('877f8af8-5fb9-432a-93e0-6c5966da4bad', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Child', 2, 11),
   ('cbce127f-0a7b-4bf2-a9d4-ad5d71109534', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Adult', 12, NULL),
-  ('7a8f4f12-fab9-4c94-8281-3362134ce14c', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Child', 2, 11)
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "type" = EXCLUDED."type",
-  "min_age" = EXCLUDED."min_age",
-  "max_age" = EXCLUDED."max_age";
+  ('7a8f4f12-fab9-4c94-8281-3362134ce14c', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Child', 2, 11);
 
 -- ── contract_addons (16 rows) ──────────────────────────────
 INSERT INTO public.contract_addons ("id", "created_at", "updated_at", "sub_contract_id", "sub_category", "type", "value", "remark")
@@ -315,14 +270,7 @@ VALUES
   ('a7c33d1f-7b56-4aaf-9cbd-ba793485fe4c', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-001', 'Dedicated Vehicle', 'Airport Transfer Van', 60, 'Group transfer vehicle'),
   ('c4706d88-66a7-44ba-a0d4-e2d949f05bd1', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Photography', 'Sunset Scenic Flight', 280, '30-min scenic flight at golden hour'),
   ('c6d3c821-590b-417a-a39f-a6c7f3e30857', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Dedicated Vehicle', 'Luxury Speedboat Upgrade', 250, 'Private yacht-style transfer'),
-  ('9ea7c4b6-d16a-486c-929d-95320a8676bd', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Dedicated Vehicle', 'VIP Lounge Access', 190, 'Soneva private lounge')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "sub_category" = EXCLUDED."sub_category",
-  "type" = EXCLUDED."type",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('9ea7c4b6-d16a-486c-929d-95320a8676bd', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Dedicated Vehicle', 'VIP Lounge Access', 190, 'Soneva private lounge');
 
 -- ── contract_insurance (19 rows) ──────────────────────────────
 INSERT INTO public.contract_insurance ("id", "created_at", "updated_at", "sub_contract_id", "parameter", "value", "remark")
@@ -345,13 +293,7 @@ VALUES
   ('7c3aadf3-3003-4d4d-9e0b-761a39f9281e', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Insurance cover', 'Yes', 'Standard cover'),
   ('6df1ca0a-adc7-4356-8836-1560dc76d615', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Insurance cover', 'Yes', 'Included in fare'),
   ('4e19c577-4b93-4bd1-8321-06eda109cd06', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Insurance cover', 'No', 'Resort arranges own cover'),
-  ('c0d63f15-cae8-4321-b4ae-2067fb49e95d', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Insurance cover', 'Yes', 'Included in fare')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "parameter" = EXCLUDED."parameter",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('c0d63f15-cae8-4321-b4ae-2067fb49e95d', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Insurance cover', 'Yes', 'Included in fare');
 
 -- ── contract_government_charges (19 rows) ──────────────────────────────
 INSERT INTO public.contract_government_charges ("id", "created_at", "updated_at", "sub_contract_id", "parameter", "value", "remark")
@@ -374,13 +316,7 @@ VALUES
   ('6a339645-b8e9-46fe-b358-7ed166e600b9', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Government_charges', 3.5, 'Return per pax excluding GST'),
   ('0ca0e74c-e3ab-4b26-a58b-ead0d5a4700f', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Government_charges', 2, 'Speedboat lower levy'),
   ('dfded33e-6e95-4bf2-9a46-88af0306ce59', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Government_charges', 3.5, 'Return per pax excluding GST'),
-  ('26c7a169-541b-4d09-8827-99f57605c6ec', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Government_charges', 3.5, 'Return per pax excluding GST')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "parameter" = EXCLUDED."parameter",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('26c7a169-541b-4d09-8827-99f57605c6ec', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Government_charges', 3.5, 'Return per pax excluding GST');
 
 -- ── contract_fuel (18 rows) ──────────────────────────────
 INSERT INTO public.contract_fuel ("id", "created_at", "updated_at", "sub_contract_id", "type", "value", "remark")
@@ -402,13 +338,7 @@ VALUES
   ('5c253bd0-25b4-4396-aada-cf895f99e546', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Fuel surcharge', 'Included', 'Bundled'),
   ('2c2f5f06-31b2-4693-b44f-b2bf3f8aa74d', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Fuel surcharge', '$15 per trip', 'Speedboat fuel levy'),
   ('a395032e-bfc2-421b-b7bd-94c678845e80', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Fuel surcharge', '$40 per flight hour', 'Based on Platts Singapore'),
-  ('fe4112a8-16a8-42d1-9243-37c68d1b50bf', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Fuel surcharge', 'Included', 'Bundled')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "type" = EXCLUDED."type",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('fe4112a8-16a8-42d1-9243-37c68d1b50bf', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Fuel surcharge', 'Included', 'Bundled');
 
 -- ── contract_payment_plan (22 rows) ──────────────────────────────
 INSERT INTO public.contract_payment_plan ("id", "created_at", "updated_at", "sub_contract_id", "parameter", "value", "remark")
@@ -434,13 +364,7 @@ VALUES
   ('c50e10ae-4096-4bc3-a921-1a8826b4a87c', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Payment terms', 'Net 30 days', 'Standard transfer billing'),
   ('69c52de7-2e11-43bf-a587-c3168d02d71a', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Payment terms', 'Net 30 days', 'Marriott centralized billing'),
   ('a69666fd-f899-41cf-b62b-8d0d962457b7', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Payment terms', 'Net 15 days', 'Charter prepayment'),
-  ('1bc68fbf-a433-40d8-9ddb-dc8163402458', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Payment terms', 'Net 30 days', 'Monthly billing')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "parameter" = EXCLUDED."parameter",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('1bc68fbf-a433-40d8-9ddb-dc8163402458', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Payment terms', 'Net 30 days', 'Monthly billing');
 
 -- ── contract_service_commitment (26 rows) ──────────────────────────────
 INSERT INTO public.contract_service_commitment ("id", "created_at", "updated_at", "sub_contract_id", "parameter", "value", "remark")
@@ -470,13 +394,7 @@ VALUES
   ('b23cffc0-d74e-46fd-9225-9387b86d7c46', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Operating hours', '06:00 - 22:00', 'Speedboat schedule'),
   ('c4a88b2f-4151-443a-a3e3-69e717c96bd8', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Frequency', 'Every 45 minutes', 'Fixed schedule'),
   ('ee31cf57-effb-48f0-9248-4aa9fffafb41', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Dedicated aircraft', '1 DHC-6 Twin Otter', 'Soneva dedicated charter'),
-  ('21b5d7ee-eaaf-46b3-b324-db2c341ca055', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Operating hours', '06:00 - 16:30', 'Standard hours')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "parameter" = EXCLUDED."parameter",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('21b5d7ee-eaaf-46b3-b324-db2c341ca055', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Operating hours', '06:00 - 16:30', 'Standard hours');
 
 -- ── contract_termination (24 rows) ──────────────────────────────
 INSERT INTO public.contract_termination ("id", "created_at", "updated_at", "sub_contract_id", "parameter", "value", "remark")
@@ -504,13 +422,7 @@ VALUES
   ('7e33d2f6-33a8-4f79-b9e3-5dabc79ab17e', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-008-002', 'Notice period', '90 days', 'Transfer notice'),
   ('cba6f2f2-1fd4-4a42-b40d-39b71eed0352', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-009-001', 'Notice period', '60 days', 'Speedboat notice period'),
   ('e070cecd-13b3-4c2b-9cf3-2d1399222447', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-001', 'Notice period', '180 days', 'Charter notice'),
-  ('599a0965-f065-4c49-8f38-0b1edff3761e', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Notice period', '90 days', 'Transfer notice')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "sub_contract_id" = EXCLUDED."sub_contract_id",
-  "parameter" = EXCLUDED."parameter",
-  "value" = EXCLUDED."value",
-  "remark" = EXCLUDED."remark";
+  ('599a0965-f065-4c49-8f38-0b1edff3761e', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'CTR-010-002', 'Notice period', '90 days', 'Transfer notice');
 
 -- ── contract_notes (10 rows) ──────────────────────────────
 INSERT INTO public.contract_notes ("id", "created_at", "updated_at", "contract_id", "content")
@@ -524,9 +436,5 @@ VALUES
   ('6e248b58-a663-43e8-9596-dbf7092e0b3a', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', '751a7f5c-6eb1-4059-a3f3-28923fbed286', '<h2>Four Seasons Kuda Huraa - Dual Transfer</h2><p>Combined speedboat and seaplane transfer for the closest Four Seasons property to Male airport.</p><ul><li>Speedboat (CTR-007-001): 25-minute journey, extended hours until 22:00, every 30 minutes at peak</li><li>Seaplane (CTR-007-002): Alternative for guests preferring aerial arrival, ~15 min flight</li></ul><p><em>Both contracts expiring March 2026 - renewal terms under active discussion. FS requesting 10% rate reduction.</em></p>'),
   ('796c105d-7af7-4d35-a74b-505ae48e1342', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'b015f249-d107-4b91-a15a-f882a23c73a6', '<h2>Anantara Kihavah - Charter & Transfer</h2><p>2-year charter + 1-year transfer for Anantara Kihavah Villas, Baa Atoll. <strong>Includes:</strong></p><ul><li>Charter (CTR-008-001): Dedicated DHC-6 Twin Otter, overwater observatory transfers for astronomy programme</li><li>Transfer (CTR-008-002): Standard scheduled seaplane, dive equipment transport arrangements</li><li>Sunset scenic flight add-on popular with honeymooners</li></ul><p>Minor Hotels regional team oversees operations. 20% deposit required for charter bookings.</p>'),
   ('d271e3a0-8f93-432a-919c-759e0a5d4c83', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', '04bb15d6-9e8a-4631-b7e7-04dae158c4d2', '<h2>Ritz-Carlton Fari Islands - Speedboat</h2><p>Speedboat transfer for The Ritz-Carlton Maldives, Fari Islands.</p><ul><li>Shared speedboat service coordination with Patina Maldives (same island cluster)</li><li>Luxury speedboat upgrade available at $250 per trip for private transfer</li><li>20-minute journey from Velana Airport</li><li>Fixed schedule every 45 minutes throughout the day</li></ul><p>Marriott centralized billing covers both RC Fari and Patina contracts.</p>'),
-  ('63d42901-b827-44e6-b4da-6b6f7ca0fc42', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'daca0df5-90b1-426b-b6e8-4afd695e1cd0', '<h2>Soneva Jani - Expired Dual Contract</h2><p>Both charter and transfer contracts expired Feb 2025. <strong>Status:</strong> Under renewal.</p><ul><li>Charter (CTR-010-001): Dedicated aircraft no longer assigned</li><li>Transfer (CTR-010-002): Ad-hoc service at published rates</li></ul><p>Soneva Group consolidating charter terms for both Fushi and Jani properties. New combined multi-property contract expected Q2 2025. Delay due to Soneva''s expansion plans for third Maldives property.</p>')
-ON CONFLICT (id) DO UPDATE SET
-  "updated_at" = EXCLUDED."updated_at",
-  "contract_id" = EXCLUDED."contract_id",
-  "content" = EXCLUDED."content";
+  ('63d42901-b827-44e6-b4da-6b6f7ca0fc42', '2026-02-15T07:01:23.175Z', '2026-02-15T07:01:23.175Z', 'daca0df5-90b1-426b-b6e8-4afd695e1cd0', '<h2>Soneva Jani - Expired Dual Contract</h2><p>Both charter and transfer contracts expired Feb 2025. <strong>Status:</strong> Under renewal.</p><ul><li>Charter (CTR-010-001): Dedicated aircraft no longer assigned</li><li>Transfer (CTR-010-002): Ad-hoc service at published rates</li></ul><p>Soneva Group consolidating charter terms for both Fushi and Jani properties. New combined multi-property contract expected Q2 2025. Delay due to Soneva''s expansion plans for third Maldives property.</p>');
 
