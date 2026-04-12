@@ -12,23 +12,31 @@
 --   D6  ALTER pricing_special  expand request_type CHECK (add VIP Guest)
 --   D7  ALTER pricing_standard weekdays  text[] → jsonb
 --   D8  ALTER pricing_standard  re-point point_a_id/point_b_id FK
---         from destinations(id) → no FK (companies or destinations both valid)
+--         from destinations(id) → companies(id)
+--
+-- Design choices:
+--   • $func$ delimiter used for function body to avoid any SQL-editor
+--     mis-pairing of $$ when the file contains multiple quoted blocks.
+--   • All triggers use DROP ... IF EXISTS before CREATE so re-running
+--     this file never errors on "trigger already exists".
+--   • All policies use DROP ... IF EXISTS for the same reason.
 -- ============================================================
 
 
 -- ─────────────────────────────────────────────────────────────
 -- Prerequisite: updated_at trigger function
---     Defined in migration 1 (20260212113817) but re-declared
---     here with CREATE OR REPLACE so this file is self-contained
---     when run directly in the SQL Editor.
+--     Re-declared here so this file is fully self-contained
+--     when pasted directly into the Supabase SQL Editor.
+--     $func$ delimiter avoids any conflict with the $$ blocks
+--     that some editors parse greedily.
 -- ─────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $func$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SET search_path = public;
+$func$ LANGUAGE plpgsql SET search_path = public;
 
 
 -- ─────────────────────────────────────────────────────────────
@@ -37,18 +45,20 @@ $$ LANGUAGE plpgsql SET search_path = public;
 -- ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.atolls (
   id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  name       text        NOT NULL UNIQUE,   -- seeding script resolves name → id
+  name       text        NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.atolls ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated access" ON public.atolls;
 CREATE POLICY "Authenticated access"
   ON public.atolls FOR ALL
   TO authenticated
   USING (true) WITH CHECK (true);
 
+DROP TRIGGER IF EXISTS update_atolls_updated_at ON public.atolls;
 CREATE TRIGGER update_atolls_updated_at
   BEFORE UPDATE ON public.atolls
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -56,19 +66,15 @@ CREATE TRIGGER update_atolls_updated_at
 
 -- ─────────────────────────────────────────────────────────────
 -- D3: companies — add missing columns
---     code:     short identifier (MAR, SON, LVMH …).
---               Must be unique — these are company identifiers.
---     atoll_id: FK to atolls(id).
---               Only resort-type companies carry an atoll (33 % null).
---               Stored as text names in Excel; load step must resolve
---               name → atolls.id before inserting.
+--     code:     short identifier (MAR, SON, LVMH …) — must be unique.
+--     atoll_id: FK to atolls(id); null for Group-type companies.
+--               The seeding script resolves atoll name → id.
 -- ─────────────────────────────────────────────────────────────
 ALTER TABLE public.companies
   ADD COLUMN IF NOT EXISTS code     text,
   ADD COLUMN IF NOT EXISTS atoll_id uuid REFERENCES public.atolls(id);
 
--- Unique index on code (separate statement so IF NOT EXISTS is safe
--- even if the column was added in a prior partial run).
+-- Partial unique index — allows multiple NULLs, rejects duplicate codes.
 CREATE UNIQUE INDEX IF NOT EXISTS companies_code_unique
   ON public.companies (code)
   WHERE code IS NOT NULL;
@@ -111,7 +117,6 @@ ALTER TABLE public.pricing_special
 -- ─────────────────────────────────────────────────────────────
 -- D7: pricing_standard — weekdays type text[] → jsonb
 --     Excel stores JSON arrays: ["Mon","Tue","Wed",...]
---     PostgreSQL text[] uses a different wire format {Mon,Tue,...}
 --     jsonb is the correct type for JSON array data from Excel.
 -- ─────────────────────────────────────────────────────────────
 ALTER TABLE public.pricing_standard
@@ -125,9 +130,7 @@ ALTER TABLE public.pricing_standard
 -- ─────────────────────────────────────────────────────────────
 -- D8: pricing_standard — fix FK on point_a_id / point_b_id
 --     Old SQL referenced destinations(id).
---     Actual Excel data has UUIDs matching companies.id
---     (resorts are the route endpoints in practice).
---     Drop the old FK; add a correct FK to companies.
+--     Actual Excel UUIDs match companies.id, not destinations.id.
 -- ─────────────────────────────────────────────────────────────
 ALTER TABLE public.pricing_standard
   DROP CONSTRAINT IF EXISTS pricing_standard_point_a_id_fkey,
@@ -139,221 +142,133 @@ ALTER TABLE public.pricing_standard
   ADD CONSTRAINT pricing_standard_point_b_id_fkey
     FOREIGN KEY (point_b_id) REFERENCES public.companies(id);
 
--- ─────────────────────────────────────────────────────────────
--- D8 follow-up: destinations table
---     The destinations table was defined in migration 1 and seeded
---     with airport/resort rows.  No destinations.xlsx exists in
---     public/data/ and point_a/b_id now reference companies instead.
---     The table is kept for historical reference but is no longer
---     part of the active data model.  Do NOT drop it yet — confirm
---     with the team that no code path queries it before removing.
--- ─────────────────────────────────────────────────────────────
 COMMENT ON TABLE public.destinations IS
-  'Legacy table — superseded by companies.  '
-  'point_a_id/point_b_id in pricing_standard now reference companies(id).  '
-  'Verify no active queries before dropping.';
+  'Legacy — point_a/b_id in pricing_standard now reference companies(id). '
+  'Confirm no active queries before dropping.';
 
 
 -- ─────────────────────────────────────────────────────────────
--- D4: Add updated_at to every sub-table that has it in Excel
---     but is missing it in SQL. Also add the trigger for each.
---
---     Tables affected (12):
---       pricing_standard, pricing_special,
---       contract_baggage, contract_booking, contract_age,
---       contract_addons, contract_insurance,
---       contract_government_charges, contract_fuel,
---       contract_payment_plan, contract_service_commitment,
---       contract_termination
+-- D4: Add updated_at + trigger to the 12 sub-tables that have
+--     it in Excel but were missing it in SQL.
+--     DROP TRIGGER IF EXISTS before each CREATE avoids errors
+--     when this file is re-run after a partial failure.
 -- ─────────────────────────────────────────────────────────────
 
 -- pricing_standard
 ALTER TABLE public.pricing_standard
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_pricing_standard_updated_at'
-  ) THEN
-    CREATE TRIGGER update_pricing_standard_updated_at
-      BEFORE UPDATE ON public.pricing_standard
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_pricing_standard_updated_at ON public.pricing_standard;
+CREATE TRIGGER update_pricing_standard_updated_at
+  BEFORE UPDATE ON public.pricing_standard
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- pricing_special
 ALTER TABLE public.pricing_special
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_pricing_special_updated_at'
-  ) THEN
-    CREATE TRIGGER update_pricing_special_updated_at
-      BEFORE UPDATE ON public.pricing_special
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_pricing_special_updated_at ON public.pricing_special;
+CREATE TRIGGER update_pricing_special_updated_at
+  BEFORE UPDATE ON public.pricing_special
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_baggage
 ALTER TABLE public.contract_baggage
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_baggage_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_baggage_updated_at
-      BEFORE UPDATE ON public.contract_baggage
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_baggage_updated_at ON public.contract_baggage;
+CREATE TRIGGER update_contract_baggage_updated_at
+  BEFORE UPDATE ON public.contract_baggage
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_booking
 ALTER TABLE public.contract_booking
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_booking_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_booking_updated_at
-      BEFORE UPDATE ON public.contract_booking
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_booking_updated_at ON public.contract_booking;
+CREATE TRIGGER update_contract_booking_updated_at
+  BEFORE UPDATE ON public.contract_booking
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_age
 ALTER TABLE public.contract_age
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_age_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_age_updated_at
-      BEFORE UPDATE ON public.contract_age
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_age_updated_at ON public.contract_age;
+CREATE TRIGGER update_contract_age_updated_at
+  BEFORE UPDATE ON public.contract_age
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_addons
 ALTER TABLE public.contract_addons
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_addons_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_addons_updated_at
-      BEFORE UPDATE ON public.contract_addons
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_addons_updated_at ON public.contract_addons;
+CREATE TRIGGER update_contract_addons_updated_at
+  BEFORE UPDATE ON public.contract_addons
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_insurance
 ALTER TABLE public.contract_insurance
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_insurance_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_insurance_updated_at
-      BEFORE UPDATE ON public.contract_insurance
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_insurance_updated_at ON public.contract_insurance;
+CREATE TRIGGER update_contract_insurance_updated_at
+  BEFORE UPDATE ON public.contract_insurance
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_government_charges
 ALTER TABLE public.contract_government_charges
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_government_charges_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_government_charges_updated_at
-      BEFORE UPDATE ON public.contract_government_charges
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_government_charges_updated_at ON public.contract_government_charges;
+CREATE TRIGGER update_contract_government_charges_updated_at
+  BEFORE UPDATE ON public.contract_government_charges
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_fuel
 ALTER TABLE public.contract_fuel
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_fuel_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_fuel_updated_at
-      BEFORE UPDATE ON public.contract_fuel
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_fuel_updated_at ON public.contract_fuel;
+CREATE TRIGGER update_contract_fuel_updated_at
+  BEFORE UPDATE ON public.contract_fuel
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_payment_plan
 ALTER TABLE public.contract_payment_plan
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_payment_plan_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_payment_plan_updated_at
-      BEFORE UPDATE ON public.contract_payment_plan
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_payment_plan_updated_at ON public.contract_payment_plan;
+CREATE TRIGGER update_contract_payment_plan_updated_at
+  BEFORE UPDATE ON public.contract_payment_plan
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_service_commitment
 ALTER TABLE public.contract_service_commitment
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_service_commitment_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_service_commitment_updated_at
-      BEFORE UPDATE ON public.contract_service_commitment
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_service_commitment_updated_at ON public.contract_service_commitment;
+CREATE TRIGGER update_contract_service_commitment_updated_at
+  BEFORE UPDATE ON public.contract_service_commitment
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- contract_termination
 ALTER TABLE public.contract_termination
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'update_contract_termination_updated_at'
-  ) THEN
-    CREATE TRIGGER update_contract_termination_updated_at
-      BEFORE UPDATE ON public.contract_termination
-      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END $$;
+DROP TRIGGER IF EXISTS update_contract_termination_updated_at ON public.contract_termination;
+CREATE TRIGGER update_contract_termination_updated_at
+  BEFORE UPDATE ON public.contract_termination
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
