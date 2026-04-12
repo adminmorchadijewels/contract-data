@@ -17,6 +17,21 @@
 
 
 -- ─────────────────────────────────────────────────────────────
+-- Prerequisite: updated_at trigger function
+--     Defined in migration 1 (20260212113817) but re-declared
+--     here with CREATE OR REPLACE so this file is self-contained
+--     when run directly in the SQL Editor.
+-- ─────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public;
+
+
+-- ─────────────────────────────────────────────────────────────
 -- D1: NEW TABLE — atolls
 --     Exists in Excel (12 rows), completely missing from SQL.
 -- ─────────────────────────────────────────────────────────────
