@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import type { User, Session } from "@supabase/supabase-js";
-import { supabase, isAllowedEmail, isUserAllowed } from "@/lib/supabase";
+import { supabase, isAllowedEmail } from "@/lib/supabase";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,11 +35,8 @@ function clearSessionCookie() { document.cookie = `${SESSION_COOKIE}=; path=/; e
 
 // ── Helper: full authorisation check ─────────────────────────────────────────
 
-async function checkAuthorised(email: string): Promise<boolean> {
-  // Layer 1: domain
-  if (!isAllowedEmail(email)) return false;
-  // Layer 2: allowlist table
-  return isUserAllowed(email);
+function checkAuthorised(email: string): boolean {
+  return isAllowedEmail(email);
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
@@ -57,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = s?.user ?? null;
 
       if (u?.email) {
-        const ok = await checkAuthorised(u.email);
+        const ok = checkAuthorised(u.email);
         if (ok) {
           setUser(u);
           setSession(s);
@@ -84,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-          const ok = await checkAuthorised(u.email ?? "");
+          const ok = checkAuthorised(u.email ?? "");
           if (!ok) {
             // Authenticated by Supabase but not on the allowlist
             setNotAuthorised(true);

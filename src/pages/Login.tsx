@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase, isAllowedEmail, isUserAllowed, ALLOWED_DOMAIN } from "@/lib/supabase";
+import { supabase, isAllowedEmail, ALLOWED_DOMAIN } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,14 +86,6 @@ export default function LoginPage() {
 
     setBusy(true);
 
-    // Check allowlist before hitting auth — gives a clear error immediately
-    const allowed = await isUserAllowed(email);
-    if (!allowed) {
-      setError("Your account is not authorised. Contact your administrator.");
-      setBusy(false);
-      return;
-    }
-
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) {
       setError(friendlyError(err.message));
@@ -117,14 +109,6 @@ export default function LoginPage() {
     }
 
     setBusy(true);
-
-    // Check allowlist before creating the account — prevents ghost accounts
-    const allowed = await isUserAllowed(email);
-    if (!allowed) {
-      setError("Your email is not on the approved list. Contact your administrator.");
-      setBusy(false);
-      return;
-    }
 
     const { error: err } = await supabase.auth.signUp({ email, password });
     if (err) {
