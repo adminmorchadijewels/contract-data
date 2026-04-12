@@ -3,6 +3,15 @@ import { useToast } from "@/hooks/use-toast";
 import { selectAll, insertRow, updateRow, deleteRow } from "@/lib/db";
 import type { Company } from "@/types";
 
+/** Look up an atoll UUID by its display name. Returns null if not found. */
+async function resolveAtollId(name: string): Promise<string | null> {
+  const atolls = await selectAll("atolls");
+  const found = (atolls as Array<{ id: string; name: string }>).find(
+    (a) => a.name === name
+  );
+  return found?.id ?? null;
+}
+
 export function useCompanies() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,8 +69,9 @@ export function useCompanies() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (company: { name: string; type: string; code?: string; atoll?: string; address?: string; registration_no?: string; coordinates?: string }) => {
-      return insertRow("companies", company);
+    mutationFn: async ({ atoll, ...company }: { name: string; type: string; code?: string; atoll?: string; address?: string; registration_no?: string; coordinates?: string }) => {
+      const atoll_id = atoll ? await resolveAtollId(atoll) : null;
+      return insertRow("companies", { ...company, atoll_id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["companies"] });
@@ -75,8 +85,9 @@ export function useCompanies() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...company }: { id: string; name: string; type: string; code?: string; atoll?: string; address?: string; registration_no?: string; coordinates?: string }) => {
-      const result = await updateRow("companies", id, company);
+    mutationFn: async ({ id, atoll, ...company }: { id: string; name: string; type: string; code?: string; atoll?: string; address?: string; registration_no?: string; coordinates?: string }) => {
+      const atoll_id = atoll ? await resolveAtollId(atoll) : null;
+      const result = await updateRow("companies", id, { ...company, atoll_id });
       if (!result) throw new Error("Company not found");
       return result;
     },

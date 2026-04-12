@@ -579,3 +579,13 @@ $func$;
 
 REVOKE EXECUTE ON FUNCTION public.exec_ddl(TEXT)   FROM PUBLIC, authenticated;
 REVOKE EXECUTE ON FUNCTION public.exec_query(TEXT)  FROM PUBLIC, authenticated;
+
+
+-- ─────────────────────────────────────────────────────────────
+-- Permissions
+-- Tables created via SQL Editor don't auto-grant access to the
+-- anon / authenticated roles — this must be done explicitly.
+-- ─────────────────────────────────────────────────────────────
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
