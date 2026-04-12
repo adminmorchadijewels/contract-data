@@ -29,12 +29,15 @@ const inputClass =
 const btnPrimary =
   "h-10 w-full rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2";
 
-type View = "sign-in" | "sign-up" | "verify-otp";
+const btnOutline =
+  "h-10 w-full rounded-md border border-input bg-background text-sm font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2";
+
+type View = "sign-in" | "sign-up" | "verify-otp" | "forgot-password" | "reset-sent" | "reset-password";
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-  const { user, loading, notAuthorised } = useAuth();
+  const { user, loading } = useAuth();
   const navigate          = useNavigate();
   const [params]          = useSearchParams();
 
@@ -45,17 +48,26 @@ export default function LoginPage() {
   const [otp, setOtp]           = useState(["", "", "", "", "", ""]);
   const [busy, setBusy]         = useState(false);
   const [error, setError]       = useState("");
+  const [userExists, setUserExists] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Redirect once authenticated
+  // Redirect once authenticated (but not during password recovery)
   useEffect(() => {
-    if (!loading && user) navigate(params.get("redirect") || "/", { replace: true });
-  }, [user, loading, navigate, params]);
+    if (!loading && user && view !== "reset-password") {
+      navigate(params.get("redirect") || "/", { replace: true });
+    }
+  }, [user, loading, navigate, params, view]);
 
-  // Surface the "not on allowlist" error from AuthContext
+  // Detect PASSWORD_RECOVERY event (user clicked the reset link in email)
   useEffect(() => {
-    if (notAuthorised) setError("Your account is not authorised. Contact your administrator.");
-  }, [notAuthorised]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        resetError();
+        setView("reset-password");
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Cooldown timer for "Resend OTP"
   useEffect(() => {
@@ -64,7 +76,7 @@ export default function LoginPage() {
     return () => clearTimeout(t);
   }, [resendCooldown]);
 
-  function resetError() { setError(""); }
+  function resetError() { setError(""); setUserExists(false); }
 
   function switchView(next: View) {
     resetError();
@@ -112,7 +124,12 @@ export default function LoginPage() {
 
     const { error: err } = await supabase.auth.signUp({ email, password });
     if (err) {
-      setError(friendlyError(err.message));
+      if (err.message.includes("User already registered")) {
+        setUserExists(true);
+        setError("An account with this email already exists.");
+      } else {
+        setError(friendlyError(err.message));
+      }
       setBusy(false);
     } else {
       setResendCooldown(60);
@@ -154,7 +171,63 @@ export default function LoginPage() {
     if (err) setError(friendlyError(err.message));
   }
 
+  // ── Forgot Password ───────────────────────────────────────────────────────
+  async function handleForgotPassword(e: FormEvent) {
+    e.preventDefault();
+    resetError();
+
+    if (!isAllowedEmail(email)) {
+      setError(`Only @${ALLOWED_DOMAIN} accounts are allowed.`);
+      return;
+    }
+
+    setBusy(true);
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + "/login",
+    });
+    if (err) {
+      setError(friendlyError(err.message));
+      setBusy(false);
+    } else {
+      switchView("reset-sent");
+      setBusy(false);
+    }
+  }
+
+  // ── Set New Password ──────────────────────────────────────────────────────
+  async function handleSetNewPassword(e: FormEvent) {
+    e.preventDefault();
+    resetError();
+
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    setBusy(true);
+    const { error: err } = await supabase.auth.updateUser({ password });
+    if (err) {
+      setError(friendlyError(err.message));
+      setBusy(false);
+    } else {
+      navigate(params.get("redirect") || "/", { replace: true });
+    }
+  }
+
   if (loading) return <Spinner fullscreen />;
+
+  const subtitle: Record<View, string> = {
+    "sign-in":        "Sign in to your account",
+    "sign-up":        "Create your account",
+    "verify-otp":     "Verify your email",
+    "forgot-password":"Reset your password",
+    "reset-sent":     "Check your inbox",
+    "reset-password": "Set a new password",
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -176,11 +249,7 @@ export default function LoginPage() {
           />
           <div className="text-center">
             <h1 className="text-xl font-bold text-foreground tracking-tight">TMA Contract Data</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {view === "sign-in"    && "Sign in to your account"}
-              {view === "sign-up"    && "Create your account"}
-              {view === "verify-otp" && "Verify your email"}
-            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">{subtitle[view]}</p>
           </div>
         </div>
 
@@ -211,6 +280,14 @@ export default function LoginPage() {
                     autoComplete="current-password" required className={inputClass} />
                 </Field>
 
+                <div className="flex justify-end -mt-1">
+                  <button type="button"
+                    onClick={() => switchView("forgot-password")}
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                    Forgot password?
+                  </button>
+                </div>
+
                 {error && <Err msg={error} />}
 
                 <button type="submit" disabled={busy} className={btnPrimary}>
@@ -232,7 +309,7 @@ export default function LoginPage() {
               <form onSubmit={handleSignUp} className="flex flex-col gap-3">
                 <Field label="Work email" htmlFor="su-email">
                   <input id="su-email" type="email" value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); resetError(); }}
                     placeholder={`you@${ALLOWED_DOMAIN}`}
                     autoComplete="email" autoFocus required className={inputClass} />
                 </Field>
@@ -256,9 +333,24 @@ export default function LoginPage() {
 
                 {error && <Err msg={error} />}
 
-                <button type="submit" disabled={busy} className={btnPrimary}>
-                  {busy ? <BtnSpinner /> : "Create account"}
-                </button>
+                {/* When user already exists — show action buttons instead of just error */}
+                {userExists ? (
+                  <div className="flex flex-col gap-2 pt-1">
+                    <button type="button" onClick={() => switchView("sign-in")}
+                      className={btnPrimary}>
+                      Sign in instead
+                    </button>
+                    <button type="button"
+                      onClick={() => { resetError(); setView("forgot-password"); }}
+                      className={btnOutline}>
+                      Forgot password?
+                    </button>
+                  </div>
+                ) : (
+                  <button type="submit" disabled={busy} className={btnPrimary}>
+                    {busy ? <BtnSpinner /> : "Create account"}
+                  </button>
+                )}
 
                 <p className="text-center text-sm text-muted-foreground pt-1">
                   Already have an account?{" "}
@@ -289,7 +381,6 @@ export default function LoginPage() {
                   </button>
                 </form>
 
-                {/* Resend */}
                 <div className="text-center text-sm text-muted-foreground">
                   Didn't receive it?{" "}
                   {resendCooldown > 0 ? (
@@ -307,6 +398,88 @@ export default function LoginPage() {
                   ← Back
                 </button>
               </div>
+            )}
+
+            {/* ── Forgot Password ───────────────────────────────────────── */}
+            {view === "forgot-password" && (
+              <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground text-center -mt-2 mb-1">
+                  Enter your work email and we'll send you a link to reset your password.
+                </p>
+
+                <Field label="Work email" htmlFor="fp-email">
+                  <input id="fp-email" type="email" value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={`you@${ALLOWED_DOMAIN}`}
+                    autoComplete="email" autoFocus required className={inputClass} />
+                </Field>
+
+                {error && <Err msg={error} />}
+
+                <button type="submit" disabled={busy} className={btnPrimary}>
+                  {busy ? <BtnSpinner /> : "Send reset link"}
+                </button>
+
+                <button type="button" onClick={() => switchView("sign-in")}
+                  className="text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  ← Back to sign in
+                </button>
+              </form>
+            )}
+
+            {/* ── Reset Email Sent ──────────────────────────────────────── */}
+            {view === "reset-sent" && (
+              <div className="flex flex-col gap-4 text-center">
+                <div className="rounded-lg border border-border bg-muted/30 px-4 py-4 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground mb-1">Check your inbox</p>
+                  <p>
+                    A password reset link has been sent to{" "}
+                    <span className="font-medium text-foreground">{email}</span>.
+                    Click the link in that email to set a new password.
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Didn't receive it? Check your spam folder or{" "}
+                  <button type="button" onClick={() => switchView("forgot-password")}
+                    className="text-primary hover:underline">
+                    try again
+                  </button>.
+                </p>
+                <button type="button" onClick={() => switchView("sign-in")}
+                  className="text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  ← Back to sign in
+                </button>
+              </div>
+            )}
+
+            {/* ── Reset Password ────────────────────────────────────────── */}
+            {view === "reset-password" && (
+              <form onSubmit={handleSetNewPassword} className="flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground text-center -mt-2 mb-1">
+                  Enter a new password for your account.
+                </p>
+
+                <Field label="New password" htmlFor="rp-pw">
+                  <input id="rp-pw" type="password" value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    autoComplete="new-password" autoFocus required minLength={6}
+                    className={inputClass} />
+                </Field>
+
+                <Field label="Confirm new password" htmlFor="rp-confirm">
+                  <input id="rp-confirm" type="password" value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password" required className={inputClass} />
+                </Field>
+
+                {error && <Err msg={error} />}
+
+                <button type="submit" disabled={busy} className={btnPrimary}>
+                  {busy ? <BtnSpinner /> : "Set new password"}
+                </button>
+              </form>
             )}
 
           </motion.div>
