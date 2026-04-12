@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { selectAll, insertRow, updateRow, deleteRow } from "@/lib/excelDataService";
+import { selectAll, insertRow, updateRow, deleteRow } from "@/lib/db";
 import type { Company } from "@/types";
 
 export function useCompanies() {
@@ -10,17 +10,17 @@ export function useCompanies() {
   const query = useQuery({
     queryKey: ["companies"],
     queryFn: async () => {
-      const companies = selectAll("companies");
-      const contracts = selectAll("contracts");
+      const [companies, contracts] = await Promise.all([
+        selectAll("companies"),
+        selectAll("contracts"),
+      ]);
 
       return (companies
         .map((c) => {
-          // Count contracts where this company is group_id or resort_id
           const relatedContracts = contracts.filter(
             (ct) => ct.group_id === c.id || ct.resort_id === c.id
           );
 
-          // Get linked resort names from contracts
           const linkedResortIds = new Set<string>();
           relatedContracts.forEach((ct) => {
             if (ct.resort_id && ct.resort_id !== c.id) {
@@ -28,7 +28,6 @@ export function useCompanies() {
             }
           });
 
-          // For resorts: find other resorts linked via same group contracts
           if (c.type === "Resort") {
             relatedContracts.forEach((ct) => {
               if (ct.group_id) {
@@ -77,7 +76,7 @@ export function useCompanies() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...company }: { id: string; name: string; type: string; code?: string; atoll?: string; address?: string; registration_no?: string; coordinates?: string }) => {
-      const result = updateRow("companies", id, company);
+      const result = await updateRow("companies", id, company);
       if (!result) throw new Error("Company not found");
       return result;
     },
@@ -94,7 +93,7 @@ export function useCompanies() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      deleteRow("companies", id);
+      await deleteRow("companies", id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["companies"] });

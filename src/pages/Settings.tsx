@@ -3,7 +3,7 @@ import { Settings as SettingsIcon, Plus, X, Lock, Key, Eye, EyeOff, Check } from
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableSettingsModal } from "@/components/settings/TableSettingsModal";
-import { selectAll, insertRow, deleteRow } from "@/lib/excelDataService";
+import { selectAll, insertRow, deleteRow } from "@/lib/db";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import type { Atoll } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -46,7 +46,7 @@ export default function SettingsPage() {
 
   const { data: atolls } = useQuery({
     queryKey: ["atolls"],
-    queryFn: () => (selectAll("atolls") as Atoll[]).sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+    queryFn: async () => (await selectAll("atolls") as Atoll[]).sort((a, b) => (a.name || "").localeCompare(b.name || "")),
   });
 
   const handleAddAtoll = () => {
@@ -57,15 +57,17 @@ export default function SettingsPage() {
       toast({ title: "Atoll already exists", variant: "destructive" });
       return;
     }
-    insertRow("atolls", { name });
-    queryClient.invalidateQueries({ queryKey: ["atolls"] });
+    insertRow("atolls", { name }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["atolls"] });
+    });
     setNewAtoll("");
     toast({ title: `"${name}" added` });
   };
 
   const handleDeleteAtoll = (id: string, name: string) => {
-    deleteRow("atolls", id);
-    queryClient.invalidateQueries({ queryKey: ["atolls"] });
+    deleteRow("atolls", id).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["atolls"] });
+    });
     toast({ title: `"${name}" removed` });
   };
 

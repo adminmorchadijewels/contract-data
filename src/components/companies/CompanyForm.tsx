@@ -10,7 +10,7 @@ import { companySchema, CompanyFormData } from "@/lib/validations";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { selectAll } from "@/lib/excelDataService";
+import { selectAll } from "@/lib/db";
 import type { Company, Atoll } from "@/types";
 
 interface CompanyFormProps {
@@ -25,7 +25,7 @@ export function CompanyForm({ open, onClose, company }: CompanyFormProps) {
 
   const { data: atolls } = useQuery({
     queryKey: ["atolls"],
-    queryFn: () => (selectAll("atolls") as Atoll[]).sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+    queryFn: async () => (await selectAll("atolls") as Atoll[]).sort((a, b) => (a.name || "").localeCompare(b.name || "")),
   });
 
   const form = useForm<CompanyFormData>({

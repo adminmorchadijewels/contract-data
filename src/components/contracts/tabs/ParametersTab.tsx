@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { insertRow, updateRow, deleteRow, type TableName } from "@/lib/excelDataService";
+import { insertRow, updateRow, deleteRow, type TableName } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
@@ -51,9 +51,9 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
     const payload: Record<string, unknown> = { sub_contract_id: subContractId };
     fields.forEach((f) => { payload[f.key] = formData[f.key] || null; });
     if (editRow) {
-      updateRow(tableName as TableName, editRow.id, payload);
+      await updateRow(tableName as TableName, editRow.id, payload);
     } else {
-      insertRow(tableName as TableName, payload);
+      await insertRow(tableName as TableName, payload);
     }
     toast({ title: editRow ? "Updated" : "Added" });
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });
@@ -61,7 +61,7 @@ function ParamSection({ title, icon: Icon, tableName, data, contractId, subContr
   };
 
   const handleDelete = async (id: string) => {
-    deleteRow(tableName as TableName, id);
+    await deleteRow(tableName as TableName, id);
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contractId] });
     toast({ title: "Deleted" });
   };

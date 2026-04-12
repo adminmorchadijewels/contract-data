@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { insertRow, updateRow, deleteRow } from "@/lib/excelDataService";
+import { insertRow, updateRow, deleteRow } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useToast } from "@/hooks/use-toast";
@@ -76,9 +76,9 @@ export function StandardPricingTab({ contract }: Props) {
     };
     try {
       if (editRow) {
-        updateRow("pricing_standard", editRow.id, payload);
+        await updateRow("pricing_standard", editRow.id, payload);
       } else {
-        insertRow("pricing_standard", payload);
+        await insertRow("pricing_standard", payload);
       }
       toast({ title: editRow ? "Pricing updated" : "Pricing added" });
       queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
@@ -91,7 +91,7 @@ export function StandardPricingTab({ contract }: Props) {
 
   const handleDelete = async (id: string) => {
     try {
-      deleteRow("pricing_standard", id);
+      await deleteRow("pricing_standard", id);
       toast({ title: "Pricing deleted" });
       queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
     } catch (err) {

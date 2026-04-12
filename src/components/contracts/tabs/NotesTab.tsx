@@ -7,7 +7,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, Undo, Redo } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { insertRow, updateRow } from "@/lib/excelDataService";
+import { insertRow, updateRow } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
@@ -42,9 +42,9 @@ export function NotesTab({ contract }: Props) {
     const content = editor.getHTML();
     try {
       if (noteRecord) {
-        updateRow("contract_notes", noteRecord.id, { content });
+        await updateRow("contract_notes", noteRecord.id, { content });
       } else {
-        insertRow("contract_notes", { contract_id: contract.id, content });
+        await insertRow("contract_notes", { contract_id: contract.id, content });
       }
       setSaveStatus("saved");
       queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });

@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { initializeData } from "@/lib/excelDataService";
 import { RoleProvider } from "@/lib/RoleContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
@@ -69,7 +68,7 @@ const App = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initializeData().then(() => setReady(true));
+    setReady(true);
   }, []);
 
   if (!ready) {

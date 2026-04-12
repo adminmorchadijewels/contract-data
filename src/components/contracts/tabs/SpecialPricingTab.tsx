@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { insertRow, updateRow, deleteRow } from "@/lib/excelDataService";
+import { insertRow, updateRow, deleteRow } from "@/lib/db";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/lib/RoleContext";
@@ -59,9 +59,9 @@ export function SpecialPricingTab({ contract }: Props) {
       end_date: formData.end_date || null,
     };
     if (editRow) {
-      updateRow("pricing_special", editRow.id, payload);
+      await updateRow("pricing_special", editRow.id, payload);
     } else {
-      insertRow("pricing_special", payload);
+      await insertRow("pricing_special", payload);
     }
     toast({ title: editRow ? "Updated" : "Added" });
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
@@ -69,7 +69,7 @@ export function SpecialPricingTab({ contract }: Props) {
   };
 
   const handleDelete = async (id: string) => {
-    deleteRow("pricing_special", id);
+    await deleteRow("pricing_special", id);
     queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
     toast({ title: "Deleted" });
   };

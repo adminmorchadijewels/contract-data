@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { selectWhere, insertRow, updateRow } from "@/lib/excelDataService";
+import { selectWhere, insertRow, updateRow } from "@/lib/db";
 
 export interface ColumnConfig {
   key: string;
@@ -84,9 +84,9 @@ export function useTableSettings() {
         column_config: setting.column_config,
       };
       if (setting.id) {
-        updateRow("table_settings", setting.id, payload);
+        await updateRow("table_settings", setting.id, payload);
       } else {
-        insertRow("table_settings", payload);
+        await insertRow("table_settings", payload);
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["table_settings"] }),
