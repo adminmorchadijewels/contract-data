@@ -90,7 +90,7 @@ export function SchemaManager() {
       toast({ title: "Column added successfully" });
       resetAddColumn();
     } catch (err: unknown) {
-      toast({ title: "Failed to add column", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Failed to add column", description: "Please check the column name and try again.", variant: "destructive" });
     }
   };
 
@@ -106,7 +106,7 @@ export function SchemaManager() {
       setShowRenameColumn(null);
       setRenameValue("");
     } catch (err: unknown) {
-      toast({ title: "Failed to rename column", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Failed to rename column", description: "Please check the new name and try again.", variant: "destructive" });
     }
   };
 
@@ -120,7 +120,7 @@ export function SchemaManager() {
       toast({ title: "Column deleted successfully" });
       setShowDeleteConfirm(null);
     } catch (err: unknown) {
-      toast({ title: "Failed to delete column", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Failed to delete column", description: "Operation could not be completed.", variant: "destructive" });
     }
   };
 
@@ -138,7 +138,7 @@ export function SchemaManager() {
       setNewTableColumns([]);
       setNewTableFKs([]);
     } catch (err: unknown) {
-      toast({ title: "Failed to create table", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Failed to create table", description: "Please check the table name and try again.", variant: "destructive" });
     }
   };
 

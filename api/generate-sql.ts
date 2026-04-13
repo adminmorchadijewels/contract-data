@@ -9,6 +9,10 @@
  * Response: { sql: string, explanation: string } | { error: string }
  */
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck — Supabase createClient generic inference causes false positives in edge function context
+import { createClient } from "@supabase/supabase-js";
+
 export const config = { runtime: "edge" };
 
 // ── Static schema definition (mirrors sqlEngine.ts TABLE_COLUMNS) ─────────
@@ -78,7 +82,6 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-const SUPABASE_URL = (process.env as Record<string, string | undefined>).VITE_SUPABASE_URL;
 const MAX_QUERY_LENGTH = 2000;
 
 export default async function handler(req: Request): Promise<Response> {
@@ -88,12 +91,13 @@ export default async function handler(req: Request): Promise<Response> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
-  if (SUPABASE_URL) {
+  const supabaseUrl = (process.env as Record<string, string | undefined>).VITE_SUPABASE_URL;
+  const anonKey    = (process.env as Record<string, string | undefined>).VITE_SUPABASE_ANON_KEY;
+  if (supabaseUrl && anonKey) {
     const token = authHeader.slice(7);
-    const verifyRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: token },
-    }).catch(() => null);
-    if (!verifyRes?.ok) return json({ error: "Unauthorized" }, 401);
+    const client = createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    const { data, error } = await client.auth.getUser(token);
+    if (error || !data?.user) return json({ error: "Unauthorized" }, 401);
   }
   // ─────────────────────────────────────────────────────────────────────────
 
