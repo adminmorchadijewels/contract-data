@@ -49,7 +49,7 @@ export function NotesTab({ contract }: Props) {
       setSaveStatus("saved");
       queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
     } catch (err) {
-      console.error("Error:", err);
+      void err;
       toast({ title: "Operation failed", description: "Unable to save notes. Please try again.", variant: "destructive" });
       setSaveStatus("unsaved");
     }

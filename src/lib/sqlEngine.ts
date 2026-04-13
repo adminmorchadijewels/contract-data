@@ -171,7 +171,7 @@ function parseQuery(sql: string): ParsedQuery {
   // Extract table name + optional alias
   const fromTable = rest[0]?.toLowerCase();
   if (!fromTable || !VALID_TABLES.includes(fromTable)) {
-    throw new Error(`Unknown table: "${rest[0]}". Available tables: ${VALID_TABLES.join(", ")}`);
+    throw new Error(`Unknown table: "${rest[0]}"`);
   }
   let fromAlias = fromTable;
   let restIdx = 1;

@@ -84,7 +84,7 @@ export function StandardPricingTab({ contract }: Props) {
       queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
       setShowForm(false);
     } catch (err) {
-      console.error("Error:", err);
+      void err;
       toast({ title: "Operation failed", description: "Unable to save changes. Please try again.", variant: "destructive" });
     }
   };
@@ -95,7 +95,7 @@ export function StandardPricingTab({ contract }: Props) {
       toast({ title: "Pricing deleted" });
       queryClient.invalidateQueries({ queryKey: ["contract-detail", contract.id] });
     } catch (err) {
-      console.error("Error:", err);
+      void err;
       toast({ title: "Operation failed", description: "Unable to delete. Please try again.", variant: "destructive" });
     }
   };

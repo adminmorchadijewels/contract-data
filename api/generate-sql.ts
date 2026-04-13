@@ -78,8 +78,24 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+const SUPABASE_URL = (process.env as Record<string, string | undefined>).VITE_SUPABASE_URL;
+const MAX_QUERY_LENGTH = 2000;
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  // ── Auth: require a valid Supabase session ────────────────────────────────
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+
+  if (SUPABASE_URL) {
+    const token = authHeader.slice(7);
+    const verifyRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: token },
+    }).catch(() => null);
+    if (!verifyRes?.ok) return json({ error: "Unauthorized" }, 401);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const apiKey = (process.env as Record<string, string | undefined>).OPENAI_API_KEY;
   if (!apiKey) {
@@ -95,6 +111,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const userQuery = body.userQuery?.trim();
   if (!userQuery) return json({ error: "userQuery is required" }, 400);
+  if (userQuery.length > MAX_QUERY_LENGTH) {
+    return json({ error: `Query too long (max ${MAX_QUERY_LENGTH} characters)` }, 400);
+  }
 
   try {
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {

@@ -30,8 +30,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, message: error.message };
   }
-  componentDidCatch(_error: Error, info: ErrorInfo) {
-    console.error("Uncaught error:", info.componentStack);
+  componentDidCatch(_error: Error, _info: ErrorInfo) {
+    // Intentionally not logging to avoid leaking stack traces in production
   }
   render() {
     if (this.state.hasError) {
@@ -39,7 +39,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
         <div className="min-h-screen flex items-center justify-center bg-background p-8">
           <div className="max-w-md text-center space-y-4">
             <h1 className="text-2xl font-bold text-foreground">Something went wrong</h1>
-            <p className="text-sm text-muted-foreground font-mono bg-secondary/50 p-3 rounded-lg">{this.state.message}</p>
+            <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">An unexpected error occurred. Please reload the page.</p>
             <button
               className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
               onClick={() => window.location.reload()}

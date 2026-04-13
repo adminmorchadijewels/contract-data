@@ -5,6 +5,8 @@
  * sent to the browser.  The /api/generate-sql endpoint does all OpenAI calls.
  */
 
+import { supabase } from "./supabase";
+
 export interface OpenAISQLResult {
   sql: string;
   explanation: string;
@@ -18,9 +20,15 @@ export function hasOpenAIKey(): boolean {
 
 export async function generateSQLWithOpenAI(userQuery: string): Promise<OpenAISQLResult> {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
     const res = await fetch("/api/generate-sql", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
       body: JSON.stringify({ userQuery }),
     });
 
