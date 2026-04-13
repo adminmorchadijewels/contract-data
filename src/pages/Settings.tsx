@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Settings as SettingsIcon, Plus, X, Key, Check } from "lucide-react";
+import { Settings as SettingsIcon, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableSettingsModal } from "@/components/settings/TableSettingsModal";
+import { UserManagementCard } from "@/components/settings/UserManagementCard";
 import { selectAll, insertRow, deleteRow } from "@/lib/db";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import type { Atoll } from "@/types";
@@ -25,7 +26,7 @@ export default function SettingsPage() {
   const [newAtoll, setNewAtoll] = useState("");
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { role, canCreate, canDelete } = useRole();
+  const { dbRole, canCreate, canDelete } = useRole();
 
   const { data: atolls } = useQuery({
     queryKey: ["atolls"],
@@ -66,92 +67,78 @@ export default function SettingsPage() {
         <h2 className="text-2xl font-bold text-foreground">Settings</h2>
       </motion.div>
 
-      <motion.div variants={item}>
-        <div className="glass-card p-6 space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Display Configuration</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Control which tables appear in the navigation and configure column visibility and order for each table.
-            </p>
-          </div>
-          <Button onClick={() => setShowTableSettings(true)} className="btn-gradient-primary">
-            Configure Display
-          </Button>
-        </div>
-      </motion.div>
-
-      <ScrollReveal>
-        <div className="glass-card p-6 space-y-3">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Key className="h-5 w-5 text-primary" />
-              OpenAI Integration
-            </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              AI-powered query generation is configured server-side via the <code className="text-xs bg-secondary px-1 py-0.5 rounded">OPENAI_API_KEY</code> environment variable in Vercel.
-            </p>
-          </div>
-          <motion.p
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-xs text-emerald-500 flex items-center gap-1.5"
-          >
-            <Check className="h-3.5 w-3.5" />
-            AI Query Guide is active — no browser-side key required
-          </motion.p>
-        </div>
-      </ScrollReveal>
-
-      <ScrollReveal delay={0.05}>
-        <div className="glass-card p-6 space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Atoll Management</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {role === "Viewer" ? "View the list of atolls available in the Resort Data dropdown." : "Manage the list of atolls available in the Resort Data dropdown."}
-            </p>
-          </div>
-          {canCreate && (
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter atoll name..."
-                value={newAtoll}
-                onChange={(e) => setNewAtoll(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddAtoll()}
-                className="max-w-xs"
-              />
-              <Button onClick={handleAddAtoll} className="btn-gradient-primary" disabled={!newAtoll.trim()}>
-                <Plus className="h-4 w-4 mr-2" /> Add
+      {dbRole === "Admin" && (
+        <>
+          <motion.div variants={item}>
+            <div className="glass-card p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Display Configuration</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Control which tables appear in the navigation and configure column visibility and order for each table.
+                </p>
+              </div>
+              <Button onClick={() => setShowTableSettings(true)} className="btn-gradient-primary">
+                Configure Display
               </Button>
             </div>
-          )}
-          <div className="flex flex-wrap gap-2 mt-2">
-            {atolls?.map((atoll, idx) => (
-              <motion.span
-                key={atoll.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.03, type: "spring", stiffness: 300, damping: 20 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-sm text-foreground"
-              >
-                {atoll.name}
-                {canDelete && (
-                  <motion.button
-                    whileHover={{ scale: 1.2 }}
-                    whileTap={{ scale: 0.85 }}
-                    onClick={() => handleDeleteAtoll(atoll.id, atoll.name)}
-                    className="text-muted-foreground hover:text-destructive transition-colors"
+          </motion.div>
+
+          <ScrollReveal>
+            <div className="glass-card p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Atoll Management</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Manage the list of atolls available in the Resort Data dropdown.
+                </p>
+              </div>
+              {canCreate && (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter atoll name..."
+                    value={newAtoll}
+                    onChange={(e) => setNewAtoll(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddAtoll()}
+                    className="max-w-xs"
+                  />
+                  <Button onClick={handleAddAtoll} className="btn-gradient-primary" disabled={!newAtoll.trim()}>
+                    <Plus className="h-4 w-4 mr-2" /> Add
+                  </Button>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {atolls?.map((atoll, idx) => (
+                  <motion.span
+                    key={atoll.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.03, type: "spring", stiffness: 300, damping: 20 }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-sm text-foreground"
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </motion.button>
+                    {atoll.name}
+                    {canDelete && (
+                      <motion.button
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.85 }}
+                        onClick={() => handleDeleteAtoll(atoll.id, atoll.name)}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </motion.button>
+                    )}
+                  </motion.span>
+                ))}
+                {(!atolls || atolls.length === 0) && (
+                  <span className="text-sm text-muted-foreground">No atolls configured yet.</span>
                 )}
-              </motion.span>
-            ))}
-            {(!atolls || atolls.length === 0) && (
-              <span className="text-sm text-muted-foreground">No atolls configured yet.</span>
-            )}
-          </div>
-        </div>
-      </ScrollReveal>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.05}>
+            <UserManagementCard />
+          </ScrollReveal>
+        </>
+      )}
 
       <TableSettingsModal open={showTableSettings} onClose={() => setShowTableSettings(false)} />
     </motion.div>

@@ -78,7 +78,7 @@ export function AppSidebar() {
               animate="visible"
             >
               <SidebarMenu>
-                {navItems.map((item) => {
+                {navItems.filter((item) => item.title !== "Settings" || dbRole === "Admin").map((item) => {
                   const active = isActive(item.url);
                   return (
                     <motion.div key={item.title} variants={navItemVariant}>
