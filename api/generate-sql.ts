@@ -5,7 +5,11 @@
  * Set the environment variable in Vercel → Project Settings → Environment Variables.
  *
  * POST /api/generate-sql
- * Body: { userQuery: string }
+ * Body: {
+ *   userQuery:    string                  — natural language question
+ *   examples?:    ApprovedExample[]       — similar approved pairs from RAG retrieval
+ *   errorContext?: string                 — SQL error from previous attempt (self-healing retry)
+ * }
  * Response: { sql: string, explanation: string } | { error: string }
  */
 
@@ -15,7 +19,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export const config = { runtime: "edge" };
 
-// ── Static schema definition (mirrors sqlEngine.ts TABLE_COLUMNS) ─────────
+// ── Static schema definition (mirrors sqlEngine.ts TABLE_COLUMNS) ─────────────
 const TABLE_COLUMNS: Record<string, string[]> = {
   companies: ["id", "name", "type", "code", "atoll_id", "address", "registration_no", "coordinates", "created_at"],
   atolls: ["id", "name", "created_at"],
@@ -39,6 +43,26 @@ function buildSchema(): string {
   return Object.entries(TABLE_COLUMNS)
     .map(([table, cols]) => `Table: ${table}\n  Columns: ${cols.join(", ")}`)
     .join("\n\n");
+}
+
+// ── Format approved examples for injection into the user message ──────────────
+interface ApprovedExample {
+  question: string;
+  sql: string;
+  thumbs_up_count: number;
+  similarity: number;
+}
+
+function buildExamplesSection(examples: ApprovedExample[]): string {
+  if (examples.length === 0) return "";
+  const formatted = examples
+    .map((ex, i) =>
+      `Example ${i + 1} (approved ${ex.thumbs_up_count}×, similarity ${(ex.similarity * 100).toFixed(0)}%):\n` +
+      `  Question: ${ex.question}\n` +
+      `  SQL:\n${ex.sql.split("\n").map(l => `    ${l}`).join("\n")}`,
+    )
+    .join("\n\n");
+  return `## Approved examples from previous queries\nUse these as reference for style and table/column choices:\n\n${formatted}`;
 }
 
 const SYSTEM_PROMPT = `You are a SQL query generator for a contract management system (Trans Maldivian Airways). The database runs entirely in the browser using a custom SQL engine.
@@ -106,7 +130,7 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ error: "AI query generation is not configured on this server. Set OPENAI_API_KEY in Vercel environment variables." }, 503);
   }
 
-  let body: { userQuery?: string };
+  let body: { userQuery?: string; examples?: ApprovedExample[]; errorContext?: string };
   try {
     body = await req.json();
   } catch {
@@ -118,6 +142,26 @@ export default async function handler(req: Request): Promise<Response> {
   if (userQuery.length > MAX_QUERY_LENGTH) {
     return json({ error: `Query too long (max ${MAX_QUERY_LENGTH} characters)` }, 400);
   }
+
+  const examples  = Array.isArray(body.examples) ? body.examples : [];
+  const errorContext = body.errorContext?.trim() ?? null;
+
+  // ── Build user message — inject examples and/or error context ────────────
+  const parts: string[] = [];
+
+  const examplesSection = buildExamplesSection(examples);
+  if (examplesSection) parts.push(examplesSection);
+
+  if (errorContext) {
+    parts.push(
+      `## Previous attempt failed\nThe SQL below was generated for this question but produced an error. Fix it.\n\nError: ${errorContext}`,
+    );
+  }
+
+  parts.push(`## Question\n${userQuery}`);
+
+  const userMessage = parts.join("\n\n");
+  // ─────────────────────────────────────────────────────────────────────────
 
   try {
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -132,7 +176,7 @@ export default async function handler(req: Request): Promise<Response> {
         max_tokens: 1024,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userQuery },
+          { role: "user",   content: userMessage },
         ],
       }),
     });
