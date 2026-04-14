@@ -125,9 +125,13 @@ export default async function handler(req: Request): Promise<Response> {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  const apiKey = (process.env as Record<string, string | undefined>).OPENAI_API_KEY;
+  const groqKey   = (process.env as Record<string, string | undefined>).GROQ_API_KEY;
+  const openaiKey = (process.env as Record<string, string | undefined>).OPENAI_API_KEY;
+  const apiKey = groqKey || openaiKey;
+  const isGroq = !!groqKey;
+
   if (!apiKey) {
-    return json({ error: "AI query generation is not configured on this server. Set OPENAI_API_KEY in Vercel environment variables." }, 503);
+    return json({ error: "AI query generation is not configured on this server. Set GROQ_API_KEY or OPENAI_API_KEY in Vercel environment variables." }, 503);
   }
 
   let body: { userQuery?: string; examples?: ApprovedExample[]; errorContext?: string };
@@ -164,14 +168,19 @@ export default async function handler(req: Request): Promise<Response> {
   // ─────────────────────────────────────────────────────────────────────────
 
   try {
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const endpoint = isGroq
+      ? "https://api.groq.com/openai/v1/chat/completions"
+      : "https://api.openai.com/v1/chat/completions";
+    const model = isGroq ? "llama-3.3-70b-versatile" : "gpt-4o-mini";
+
+    const aiRes = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         temperature: 0,
         max_tokens: 1024,
         messages: [
@@ -181,14 +190,14 @@ export default async function handler(req: Request): Promise<Response> {
       }),
     });
 
-    if (!openaiRes.ok) {
-      if (openaiRes.status === 401) return json({ error: "Invalid OpenAI API key on server." }, 502);
-      if (openaiRes.status === 429) return json({ error: "Rate limit exceeded. Please try again shortly." }, 429);
-      const errBody = await openaiRes.json().catch(() => ({})) as { error?: { message?: string } };
-      return json({ error: errBody?.error?.message ?? "OpenAI request failed." }, 502);
+    if (!aiRes.ok) {
+      if (aiRes.status === 401) return json({ error: `Invalid ${isGroq ? "Groq" : "OpenAI"} API key on server.` }, 502);
+      if (aiRes.status === 429) return json({ error: "Rate limit exceeded. Please try again shortly." }, 429);
+      const errBody = await aiRes.json().catch(() => ({})) as { error?: { message?: string } };
+      return json({ error: errBody?.error?.message ?? "AI request failed." }, 502);
     }
 
-    const data = await openaiRes.json() as { choices: Array<{ message: { content: string } }> };
+    const data = await aiRes.json() as { choices: Array<{ message: { content: string } }> };
     const content = data.choices?.[0]?.message?.content?.trim() ?? "";
     const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
     const parsed = JSON.parse(cleaned) as { sql?: string; explanation?: string };
