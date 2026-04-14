@@ -43,7 +43,8 @@ Here are the findings:
 contract-data/
 ├── api/
 │   ├── admin-users.ts        Vercel Edge Fn — GET/PATCH user roles (service role key)
-│   └── generate-sql.ts       Vercel Edge Fn — OpenAI NL-to-SQL proxy (requires Bearer auth)
+│   ├── embed.ts              Vercel Edge Fn — OpenAI text-embedding-3-small proxy (requires Bearer auth)
+│   └── generate-sql.ts       Vercel Edge Fn — OpenAI NL-to-SQL proxy; accepts examples + errorContext (requires Bearer auth)
 ├── public/
 │   ├── data/                 Legacy Excel files (.xlsx) — served statically
 │   └── tma-logo.svg
@@ -88,7 +89,8 @@ contract-data/
 │   │   ├── excelDataService.ts  Legacy: fetch+parse XLSX into in-memory Map
 │   │   ├── sqlEngine.ts         Client-side SELECT/JOIN/WHERE parser
 │   │   ├── nlToSql.ts           NL → SQL prompt builder
-│   │   ├── openaiSqlService.ts  Calls /api/generate-sql with Bearer token
+│   │   ├── openaiSqlService.ts  Legacy: calls /api/generate-sql with Bearer token (superseded by ragSqlService)
+│   │   ├── ragSqlService.ts     RAG orchestrator: embed → retrieve → generate → self-heal + feedback submission
 │   │   ├── ollamaService.ts     Streams from localhost Ollama
 │   │   ├── webLLMService.ts     WebLLM WASM LLM interface
 │   │   ├── sanitize.ts          DOMPurify wrappers
@@ -108,7 +110,8 @@ contract-data/
 │       └── example.test.ts
 ├── supabase/
 │   ├── migrations/
-│   │   └── 20260212113817_*.sql   Full DB schema (20 tables + RLS)
+│   │   ├── 20260212113817_*.sql              Full DB schema (20 tables + RLS)
+│   │   └── 20260413000001_rag_feedback_system.sql  pgvector, approved_examples, rejected_examples, match RPC, RLS
 │   ├── patch-004-service-role-grants.sql   GRANT on user_roles for service role
 │   └── patch-005-security-hardening.sql    Restrict allowed_users to authenticated
 ├── .github/
@@ -181,6 +184,17 @@ Here are the findings:
 |---|---|
 | `contract_notes` | Rich-text (Tiptap HTML) notes per contract. `contract_id FK→contracts(id) ON DELETE CASCADE` |
 
+### RAG Feedback Store
+
+| Table | Purpose | Key Columns |
+|---|---|---|
+| `approved_examples` | Stores thumbs-up NL→SQL pairs used as few-shot examples in future prompts | `question TEXT`, `sql TEXT`, `embedding vector(1536)` (text-embedding-3-small), `thumbs_up_count INTEGER` (incremented on near-duplicate ≥0.95), `updated_at` |
+| `rejected_examples` | Stores thumbs-down feedback | `question TEXT`, `bad_sql TEXT`, `corrected_sql TEXT` (nullable — set when user provides correction) |
+
+IVFFlat index on `approved_examples.embedding` (`vector_cosine_ops`, `lists=100`) for sub-linear cosine search.
+
+RPC: `match_approved_examples(query_embedding, match_threshold=0.78, match_count=5)` — returns rows above similarity threshold ordered by cosine distance.
+
 ### Auth & User Management
 
 | Table | Purpose | Key Columns |
@@ -227,11 +241,12 @@ auth.users ←── table_settings (user_id)
 
 ## 2. API Routes
 
-### NL-to-SQL (Vercel Edge Function)
+### RAG / NL-to-SQL (Vercel Edge Functions)
 
 | Method | Path | What it does | Auth |
 |---|---|---|---|
-| `POST` | `/api/generate-sql` | Sends `{ userQuery }` to OpenAI GPT-4o-mini, returns `{ sql, explanation }`. Enforces 2000-char query limit. | Bearer JWT (Supabase session token). Returns 401 if missing/invalid. |
+| `POST` | `/api/embed` | Embeds `{ text }` via OpenAI `text-embedding-3-small`. Returns `{ embedding: number[] }` (1536-dim). Max 8000 chars. | Bearer JWT. Returns 401 if missing/invalid. |
+| `POST` | `/api/generate-sql` | Sends `{ userQuery, examples?, errorContext? }` to OpenAI GPT-4o-mini, returns `{ sql, explanation }`. `examples` are injected as few-shot context; `errorContext` triggers self-healing retry mode. Enforces 2000-char query limit. | Bearer JWT. Returns 401 if missing/invalid. |
 
 ### User Management (Vercel Edge Function)
 
@@ -260,7 +275,8 @@ All authenticated requests to Supabase REST — enforced by RLS (`TO authenticat
 | `signUp()` | Login page — sign-up view |
 | `verifyOtp({ type: 'email' })` | Login page — OTP verify view |
 | `signOut()` | UserMenu in sidebar |
-| `getSession()` | `openaiSqlService.ts` — attach Bearer token |
+| `getSession()` | `openaiSqlService.ts`, `ragSqlService.ts` — attach Bearer token |
+| `rpc("match_approved_examples", {...})` | `ragSqlService.ts` — cosine similarity search for approved examples |
 | `auth.getUser(token)` | `api/admin-users.ts`, `api/generate-sql.ts` — server-side JWT verification |
 | `auth.admin.listUsers()` | `api/admin-users.ts` — service role only |
 | `onAuthStateChange()` | `AuthContext.tsx` — session listener |
@@ -325,6 +341,9 @@ type TableName =
 | `ALLOWED_DOMAIN` | `"transmaldivian.com"` | `src/lib/supabase.ts` |
 | `ALLOWED_ROLES` | `["Editor", "Viewer"]` | `api/admin-users.ts` (roles settable via API — Admin excluded) |
 | `MAX_QUERY_LENGTH` | `2000` | `api/generate-sql.ts` |
+| `MAX_TEXT_LENGTH` | `8_000` | `api/embed.ts` |
+| `RAG_SIMILARITY_THRESHOLD` | `0.78` | `src/lib/ragSqlService.ts` — minimum cosine similarity to include an example |
+| `RAG_DEDUP_THRESHOLD` | `0.95` | `src/lib/ragSqlService.ts` — threshold above which a new thumbs-up increments count instead of inserting |
 | `QUERY_TIMEOUT_MS` | `10_000` | `src/lib/db.ts` |
 
 ### Shared TypeScript Interfaces (`src/types/index.ts`)
@@ -529,9 +548,12 @@ Double-submit-cookie pattern — implemented but **not yet actively wired** to t
 - **Keys**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (client-side, public), `SUPABASE_SERVICE_ROLE_KEY` (server-side only, Vercel env)
 
 ### OpenAI
-- **What**: GPT-4o-mini for natural language → SQL generation
-- **How used**: Called exclusively from `api/generate-sql.ts` (Vercel Edge Function). The browser never contacts `api.openai.com` directly — the CSP blocks it. Flow: `user types NL query → POST /api/generate-sql → edge fn calls OpenAI → returns { sql, explanation }`
-- **Model**: `gpt-4o-mini` with `temperature: 0`, `max_tokens: 1024`
+- **What**: Two models — `text-embedding-3-small` (embeddings) and `gpt-4o-mini` (SQL generation)
+- **How used**: Called exclusively from Vercel Edge Functions. The browser never contacts `api.openai.com` directly — the CSP blocks it.
+  - **Embedding flow** (`api/embed.ts`): `ragSqlService` POSTs `{ text }` → edge fn calls `text-embedding-3-small` → returns 1536-dim vector. Used before generation (retrieve similar examples) and after feedback (store new examples).
+  - **Generation flow** (`api/generate-sql.ts`): `ragSqlService` POSTs `{ userQuery, examples?, errorContext? }` → edge fn injects schema + few-shot examples + optional error context into system/user messages → calls `gpt-4o-mini` → returns `{ sql, explanation }`. `errorContext` is set on self-healing retries.
+- **RAG pipeline** (`src/lib/ragSqlService.ts`): embed question → cosine search `approved_examples` (threshold 0.78, top 5) → generate SQL → test via `executeQuery()` → if error, retry with error context (`selfHealed: true`) → surface result with 👍/👎 feedback UI
+- **Models**: `text-embedding-3-small` (1536 dims), `gpt-4o-mini` (`temperature: 0`, `max_tokens: 1024`)
 - **Key**: `OPENAI_API_KEY` — Vercel server-side env var only, never in client bundle
 
 ### HuggingFace CDN
