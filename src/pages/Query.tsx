@@ -57,7 +57,7 @@ export default function QueryPage() {
 
   // Feedback state — only shown after user runs the query via "Use & Run"
   const [hasRun, setHasRun] = useState(false);
-  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [feedback, setFeedback] = useState<"up" | "down" | "error" | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
   const [correction, setCorrection] = useState("");
 
@@ -102,11 +102,15 @@ export default function QueryPage() {
     resetFeedback();
   }, [resetFeedback]);
 
-  const handleThumbsUp = useCallback(() => {
+  const handleThumbsUp = useCallback(async () => {
     if (!nlResult?.sql || feedback) return;
     setFeedback("up");
-    void submitPositiveFeedback(nlInput, nlResult.sql);
-    setTimeout(closeGuide, 1500);
+    const saved = await submitPositiveFeedback(nlInput, nlResult.sql);
+    if (saved) {
+      setTimeout(closeGuide, 1500);
+    } else {
+      setFeedback("error");
+    }
   }, [nlInput, nlResult, feedback, closeGuide]);
 
   const handleThumbsDown = useCallback(() => {
@@ -415,7 +419,7 @@ export default function QueryPage() {
                             <pre className="text-sm font-mono bg-secondary/70 rounded-lg p-3 text-foreground overflow-x-auto whitespace-pre-wrap">{nlResult.sql}</pre>
                           </div>
                           <div className="flex items-center gap-2">
-                            {hasRun && !feedback && (
+                            {hasRun && (!feedback || feedback === "error") && (
                               <div className="flex items-center gap-1 mr-auto">
                                 <span className="text-[11px] text-muted-foreground">Did this return the right results?</span>
                                 <Tooltip>
@@ -439,6 +443,11 @@ export default function QueryPage() {
                             {feedback === "up" && (
                               <span className="text-[11px] text-emerald-500 mr-auto flex items-center gap-1">
                                 <ThumbsUp className="h-3 w-3" /> Saved! Thanks for the feedback.
+                              </span>
+                            )}
+                            {feedback === "error" && (
+                              <span className="text-[11px] text-destructive mr-auto">
+                                Failed to save — check browser console for details.
                               </span>
                             )}
                             {feedback === "down" && !showCorrection && (

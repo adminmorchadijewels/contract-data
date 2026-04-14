@@ -160,7 +160,7 @@ export async function generateSQLWithRAG(userQuery: string): Promise<RAGSQLResul
 
 // ── Feedback: thumbs up ───────────────────────────────────────────────────────
 
-export async function submitPositiveFeedback(question: string, sql: string): Promise<void> {
+export async function submitPositiveFeedback(question: string, sql: string): Promise<boolean> {
   try {
     const embedding = await embedText(question);
 
@@ -168,26 +168,30 @@ export async function submitPositiveFeedback(question: string, sql: string): Pro
       // Near-duplicate check only possible when we have an embedding
       const nearDupes = await searchSimilarExamples(embedding, 0.95, 1);
       if (nearDupes.length > 0) {
-        await supabase
+        const { error } = await supabase
           .from("approved_examples")
           .update({
             thumbs_up_count: nearDupes[0].thumbs_up_count + 1,
             updated_at: new Date().toISOString(),
           })
           .eq("id", nearDupes[0].id);
-        return;
+        if (error) { console.error("[RAG] update approved_examples:", error.message); return false; }
+        return true;
       }
     }
 
     // Insert new example — embedding is null when OpenAI unavailable (still saved for later)
-    await supabase.from("approved_examples").insert({
+    const { error } = await supabase.from("approved_examples").insert({
       question,
       sql,
       ...(embedding && { embedding }),
       thumbs_up_count: 1,
     });
-  } catch {
-    // Feedback failure is non-critical — swallow silently
+    if (error) { console.error("[RAG] insert approved_examples:", error.message); return false; }
+    return true;
+  } catch (err) {
+    console.error("[RAG] submitPositiveFeedback unexpected error:", err);
+    return false;
   }
 }
 
@@ -197,20 +201,22 @@ export async function submitNegativeFeedback(
   question: string,
   badSql: string,
   correctedSql?: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
-    // Always record the rejection
-    await supabase.from("rejected_examples").insert({
+    const { error } = await supabase.from("rejected_examples").insert({
       question,
       bad_sql: badSql,
       corrected_sql: correctedSql ?? null,
     });
+    if (error) { console.error("[RAG] insert rejected_examples:", error.message); return false; }
 
     // If the user provided a correction, store it as an approved example too
     if (correctedSql?.trim()) {
       await submitPositiveFeedback(question, correctedSql.trim());
     }
-  } catch {
-    // Feedback failure is non-critical — swallow silently
+    return true;
+  } catch (err) {
+    console.error("[RAG] submitNegativeFeedback unexpected error:", err);
+    return false;
   }
 }
