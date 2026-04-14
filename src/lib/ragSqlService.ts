@@ -158,41 +158,40 @@ export async function generateSQLWithRAG(userQuery: string): Promise<RAGSQLResul
   }
 }
 
+// ── Feedback helper: call /api/feedback edge function ────────────────────────
+
+async function postFeedback(payload: {
+  type: "positive" | "negative";
+  question: string;
+  sql: string;
+  correctedSql?: string;
+}): Promise<boolean> {
+  try {
+    const token = await getToken();
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({})) as { error?: string };
+      console.error("[RAG] feedback API error:", data.error ?? res.status);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[RAG] feedback network error:", err);
+    return false;
+  }
+}
+
 // ── Feedback: thumbs up ───────────────────────────────────────────────────────
 
 export async function submitPositiveFeedback(question: string, sql: string): Promise<boolean> {
-  try {
-    const embedding = await embedText(question);
-
-    if (embedding) {
-      // Near-duplicate check only possible when we have an embedding
-      const nearDupes = await searchSimilarExamples(embedding, 0.95, 1);
-      if (nearDupes.length > 0) {
-        const { error } = await supabase
-          .from("approved_examples")
-          .update({
-            thumbs_up_count: nearDupes[0].thumbs_up_count + 1,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", nearDupes[0].id);
-        if (error) { console.error("[RAG] update approved_examples:", error.message); return false; }
-        return true;
-      }
-    }
-
-    // Insert new example — embedding is null when OpenAI unavailable (still saved for later)
-    const { error } = await supabase.from("approved_examples").insert({
-      question,
-      sql,
-      ...(embedding && { embedding }),
-      thumbs_up_count: 1,
-    });
-    if (error) { console.error("[RAG] insert approved_examples:", error.message); return false; }
-    return true;
-  } catch (err) {
-    console.error("[RAG] submitPositiveFeedback unexpected error:", err);
-    return false;
-  }
+  return postFeedback({ type: "positive", question, sql });
 }
 
 // ── Feedback: thumbs down (+ optional correction) ────────────────────────────
@@ -202,21 +201,5 @@ export async function submitNegativeFeedback(
   badSql: string,
   correctedSql?: string,
 ): Promise<boolean> {
-  try {
-    const { error } = await supabase.from("rejected_examples").insert({
-      question,
-      bad_sql: badSql,
-      corrected_sql: correctedSql ?? null,
-    });
-    if (error) { console.error("[RAG] insert rejected_examples:", error.message); return false; }
-
-    // If the user provided a correction, store it as an approved example too
-    if (correctedSql?.trim()) {
-      await submitPositiveFeedback(question, correctedSql.trim());
-    }
-    return true;
-  } catch (err) {
-    console.error("[RAG] submitNegativeFeedback unexpected error:", err);
-    return false;
-  }
+  return postFeedback({ type: "negative", question, sql: badSql, correctedSql });
 }
