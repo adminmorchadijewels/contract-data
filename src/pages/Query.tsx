@@ -1,13 +1,12 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { Database, Play, Download, Clock, TableIcon, ChevronRight, Copy, Check, RotateCcw, Info, Wand2, ArrowRight, X, Loader2, Sparkles, Settings } from "lucide-react";
+import { Database, Play, Download, Clock, TableIcon, ChevronRight, Copy, Check, RotateCcw, Info, Wand2, ArrowRight, X, Loader2, Sparkles, ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { executeQuery, getTableNames, getTableColumns, type QueryResult } from "@/lib/sqlEngine";
 import { generateSQL } from "@/lib/nlToSql";
-import { generateSQLWithOpenAI, hasOpenAIKey } from "@/lib/openaiSqlService";
-import { useNavigate } from "react-router-dom";
+import { generateSQLWithRAG, submitPositiveFeedback, submitNegativeFeedback, type RAGSQLResult } from "@/lib/ragSqlService";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal, AnimatedCollapse } from "@/components/ui/motion";
@@ -39,7 +38,6 @@ export default function QueryPage() {
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<{ sql: string; rowCount: number; ms: number }[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const navigate = useNavigate();
 
   // Schema info
   const tables = useMemo(() => {
@@ -53,47 +51,66 @@ export default function QueryPage() {
 
   // Query Guide state
   const [nlInput, setNlInput] = useState("");
-  const [nlResult, setNlResult] = useState<{ sql: string; explanation: string; error?: string } | null>(null);
+  const [nlResult, setNlResult] = useState<RAGSQLResult | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [nlLoading, setNlLoading] = useState(false);
   const nlInputRef = useRef<HTMLInputElement>(null);
-  const aiEnabled = hasOpenAIKey();
+
+  // Feedback state
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [showCorrection, setShowCorrection] = useState(false);
+  const [correction, setCorrection] = useState("");
+
+  const resetFeedback = useCallback(() => {
+    setFeedback(null);
+    setShowCorrection(false);
+    setCorrection("");
+  }, []);
 
   const handleGenerate = useCallback(async () => {
     const trimmed = nlInput.trim();
     if (!trimmed) return;
-
-    if (aiEnabled) {
-      setNlLoading(true);
-      setNlResult(null);
-      try {
-        const result = await generateSQLWithOpenAI(trimmed);
-        setNlResult(result);
-      } finally {
-        setNlLoading(false);
-      }
-    } else {
-      const result = generateSQL(trimmed);
+    resetFeedback();
+    setNlLoading(true);
+    setNlResult(null);
+    try {
+      const result = await generateSQLWithRAG(trimmed);
       setNlResult(result);
+    } finally {
+      setNlLoading(false);
     }
-  }, [nlInput, aiEnabled]);
+  }, [nlInput, resetFeedback]);
 
   const handleSuggestionClick = useCallback(async (suggestion: string) => {
     setNlInput(suggestion);
-    if (aiEnabled) {
-      setNlLoading(true);
-      setNlResult(null);
-      try {
-        const result = await generateSQLWithOpenAI(suggestion);
-        setNlResult(result);
-      } finally {
-        setNlLoading(false);
-      }
-    } else {
-      const r = generateSQL(suggestion);
-      setNlResult(r);
+    resetFeedback();
+    setNlLoading(true);
+    setNlResult(null);
+    try {
+      const result = await generateSQLWithRAG(suggestion);
+      setNlResult(result);
+    } finally {
+      setNlLoading(false);
     }
-  }, [aiEnabled]);
+  }, [resetFeedback]);
+
+  const handleThumbsUp = useCallback(() => {
+    if (!nlResult?.sql || feedback) return;
+    setFeedback("up");
+    void submitPositiveFeedback(nlInput, nlResult.sql);
+  }, [nlInput, nlResult, feedback]);
+
+  const handleThumbsDown = useCallback(() => {
+    if (!nlResult?.sql || feedback) return;
+    setFeedback("down");
+    setShowCorrection(true);
+  }, [nlResult, feedback]);
+
+  const handleSubmitCorrection = useCallback(() => {
+    if (!nlResult?.sql) return;
+    void submitNegativeFeedback(nlInput, nlResult.sql, correction.trim() || undefined);
+    setShowCorrection(false);
+  }, [nlInput, nlResult, correction]);
 
   const handleUseQuery = useCallback(() => {
     if (!nlResult?.sql) return;
@@ -281,11 +298,9 @@ export default function QueryPage() {
                 <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                   Describe what you need in plain English and get the SQL generated...
                 </span>
-                {aiEnabled && (
-                  <Badge variant="secondary" className="ml-auto text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
-                    <Sparkles className="h-3 w-3 mr-1" /> AI Powered
-                  </Badge>
-                )}
+                <Badge variant="secondary" className="ml-auto text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
+                  <Sparkles className="h-3 w-3 mr-1" /> AI Powered
+                </Badge>
               </motion.button>
             ) : (
               <motion.div
@@ -300,27 +315,14 @@ export default function QueryPage() {
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Wand2 className="h-4 w-4 text-primary" />
                     Query Guide
-                    {aiEnabled ? (
-                      <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
-                        <Sparkles className="h-3 w-3 mr-1" /> OpenAI
-                      </Badge>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button onClick={() => navigate("/settings")} className="inline-flex">
-                            <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-secondary/80">
-                              <Settings className="h-3 w-3 mr-1" /> Basic Mode
-                            </Badge>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Add an OpenAI key in Settings for AI-powered query generation</TooltipContent>
-                      </Tooltip>
-                    )}
+                    <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
+                      <Sparkles className="h-3 w-3 mr-1" /> AI Powered
+                    </Badge>
                   </h3>
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => { setShowGuide(false); setNlResult(null); setNlLoading(false); }}
+                    onClick={() => { setShowGuide(false); setNlResult(null); setNlLoading(false); resetFeedback(); }}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <X className="h-4 w-4" />
@@ -380,7 +382,7 @@ export default function QueryPage() {
                       className="flex items-center gap-2 py-3 justify-center"
                     >
                       <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                      <span className="text-sm text-muted-foreground">OpenAI is generating your query...</span>
+                      <span className="text-sm text-muted-foreground">Generating your query...</span>
                     </motion.div>
                   )}
                   {nlResult && !nlLoading && (
@@ -399,10 +401,44 @@ export default function QueryPage() {
                       ) : nlResult.sql ? (
                         <>
                           <p className="text-xs text-muted-foreground">{nlResult.explanation}</p>
+                          {nlResult.selfHealed && (
+                            <p className="text-[11px] text-amber-500/80 flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" /> Auto-corrected after initial error
+                            </p>
+                          )}
                           <div className="relative">
                             <pre className="text-sm font-mono bg-secondary/70 rounded-lg p-3 text-foreground overflow-x-auto whitespace-pre-wrap">{nlResult.sql}</pre>
                           </div>
-                          <div className="flex gap-2 justify-end">
+                          <div className="flex items-center gap-2">
+                            {!feedback && (
+                              <div className="flex items-center gap-1 mr-auto">
+                                <span className="text-[11px] text-muted-foreground">Helpful?</span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleThumbsUp}>
+                                      <ThumbsUp className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Good query</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleThumbsDown}>
+                                      <ThumbsDown className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Needs improvement</TooltipContent>
+                                </Tooltip>
+                              </div>
+                            )}
+                            {feedback === "up" && (
+                              <span className="text-[11px] text-emerald-500 mr-auto flex items-center gap-1">
+                                <ThumbsUp className="h-3 w-3" /> Thanks for the feedback!
+                              </span>
+                            )}
+                            {feedback === "down" && !showCorrection && (
+                              <span className="text-[11px] text-muted-foreground mr-auto">Feedback recorded.</span>
+                            )}
                             <Button variant="outline" size="sm" onClick={() => { setSql(nlResult.sql); setNlResult(null); }}>
                               Copy to Editor
                             </Button>
@@ -410,6 +446,35 @@ export default function QueryPage() {
                               <ArrowRight className="h-3.5 w-3.5 mr-1.5" /> Use & Run
                             </Button>
                           </div>
+                          <AnimatePresence>
+                            {showCorrection && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="space-y-2 overflow-hidden"
+                              >
+                                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                  <Pencil className="h-3 w-3" /> Optionally provide the correct SQL to help improve future results:
+                                </p>
+                                <textarea
+                                  value={correction}
+                                  onChange={e => setCorrection(e.target.value)}
+                                  placeholder="Paste or write the correct SQL here (optional)..."
+                                  rows={3}
+                                  className="w-full font-mono text-xs bg-secondary/50 border border-border/50 rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
+                                />
+                                <div className="flex gap-2 justify-end">
+                                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowCorrection(false)}>
+                                    Skip
+                                  </Button>
+                                  <Button size="sm" className="text-xs h-7" onClick={handleSubmitCorrection}>
+                                    Submit
+                                  </Button>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </>
                       ) : (
                         <div className="rounded-lg bg-warning/10 border border-warning/20 p-3">
