@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { executeQuery, getTableNames, getTableColumns, type QueryResult } from "@/lib/sqlEngine";
-import { generateSQL } from "@/lib/nlToSql";
 import { generateSQLWithRAG, submitPositiveFeedback, submitNegativeFeedback, type RAGSQLResult } from "@/lib/ragSqlService";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "framer-motion";
@@ -334,10 +333,7 @@ export default function QueryPage() {
                     value={nlInput}
                     onChange={e => setNlInput(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
-                    placeholder={aiEnabled
-                      ? "Ask anything about your data — AI will generate the perfect query..."
-                      : "e.g. Show all resorts in Male atoll, How many contracts per type..."
-                    }
+                    placeholder="Ask anything about your data — AI will generate the perfect query..."
                     className="flex-1 text-sm bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
                     disabled={nlLoading}
                   />
