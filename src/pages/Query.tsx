@@ -55,12 +55,14 @@ export default function QueryPage() {
   const [nlLoading, setNlLoading] = useState(false);
   const nlInputRef = useRef<HTMLInputElement>(null);
 
-  // Feedback state
+  // Feedback state — only shown after user runs the query via "Use & Run"
+  const [hasRun, setHasRun] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
   const [correction, setCorrection] = useState("");
 
   const resetFeedback = useCallback(() => {
+    setHasRun(false);
     setFeedback(null);
     setShowCorrection(false);
     setCorrection("");
@@ -93,11 +95,19 @@ export default function QueryPage() {
     }
   }, [resetFeedback]);
 
+  const closeGuide = useCallback(() => {
+    setShowGuide(false);
+    setNlResult(null);
+    setNlInput("");
+    resetFeedback();
+  }, [resetFeedback]);
+
   const handleThumbsUp = useCallback(() => {
     if (!nlResult?.sql || feedback) return;
     setFeedback("up");
     void submitPositiveFeedback(nlInput, nlResult.sql);
-  }, [nlInput, nlResult, feedback]);
+    setTimeout(closeGuide, 1500);
+  }, [nlInput, nlResult, feedback, closeGuide]);
 
   const handleThumbsDown = useCallback(() => {
     if (!nlResult?.sql || feedback) return;
@@ -108,8 +118,8 @@ export default function QueryPage() {
   const handleSubmitCorrection = useCallback(() => {
     if (!nlResult?.sql) return;
     void submitNegativeFeedback(nlInput, nlResult.sql, correction.trim() || undefined);
-    setShowCorrection(false);
-  }, [nlInput, nlResult, correction]);
+    closeGuide();
+  }, [nlInput, nlResult, correction, closeGuide]);
 
   const handleUseQuery = useCallback(() => {
     if (!nlResult?.sql) return;
@@ -139,9 +149,8 @@ export default function QueryPage() {
     if (!nlResult?.sql) return;
     const generatedSql = nlResult.sql;
     setSql(generatedSql);
-    setNlResult(null);
-    setNlInput("");
-    setShowGuide(false);
+    // Keep guide open so user can give feedback after seeing results
+    setHasRun(true);
     setQueryLoading(true);
     try {
       const r = await executeQuery(generatedSql);
@@ -321,7 +330,7 @@ export default function QueryPage() {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => { setShowGuide(false); setNlResult(null); setNlLoading(false); resetFeedback(); }}
+                    onClick={() => { setNlLoading(false); closeGuide(); }}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <X className="h-4 w-4" />
@@ -406,16 +415,16 @@ export default function QueryPage() {
                             <pre className="text-sm font-mono bg-secondary/70 rounded-lg p-3 text-foreground overflow-x-auto whitespace-pre-wrap">{nlResult.sql}</pre>
                           </div>
                           <div className="flex items-center gap-2">
-                            {!feedback && (
+                            {hasRun && !feedback && (
                               <div className="flex items-center gap-1 mr-auto">
-                                <span className="text-[11px] text-muted-foreground">Helpful?</span>
+                                <span className="text-[11px] text-muted-foreground">Did this return the right results?</span>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleThumbsUp}>
                                       <ThumbsUp className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent>Good query</TooltipContent>
+                                  <TooltipContent>Yes, save as good example</TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -423,24 +432,28 @@ export default function QueryPage() {
                                       <ThumbsDown className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent>Needs improvement</TooltipContent>
+                                  <TooltipContent>No, needs improvement</TooltipContent>
                                 </Tooltip>
                               </div>
                             )}
                             {feedback === "up" && (
                               <span className="text-[11px] text-emerald-500 mr-auto flex items-center gap-1">
-                                <ThumbsUp className="h-3 w-3" /> Thanks for the feedback!
+                                <ThumbsUp className="h-3 w-3" /> Saved! Thanks for the feedback.
                               </span>
                             )}
                             {feedback === "down" && !showCorrection && (
                               <span className="text-[11px] text-muted-foreground mr-auto">Feedback recorded.</span>
                             )}
-                            <Button variant="outline" size="sm" onClick={() => { setSql(nlResult.sql); setNlResult(null); }}>
-                              Copy to Editor
-                            </Button>
-                            <Button className="btn-gradient-primary" size="sm" onClick={useAndRun}>
-                              <ArrowRight className="h-3.5 w-3.5 mr-1.5" /> Use & Run
-                            </Button>
+                            {!hasRun && (
+                              <Button variant="outline" size="sm" onClick={() => { setSql(nlResult.sql); closeGuide(); }}>
+                                Copy to Editor
+                              </Button>
+                            )}
+                            {!feedback && (
+                              <Button className="btn-gradient-primary" size="sm" onClick={useAndRun}>
+                                <ArrowRight className="h-3.5 w-3.5 mr-1.5" /> {hasRun ? "Run Again" : "Use & Run"}
+                              </Button>
+                            )}
                           </div>
                           <AnimatePresence>
                             {showCorrection && (
@@ -461,7 +474,7 @@ export default function QueryPage() {
                                   className="w-full font-mono text-xs bg-secondary/50 border border-border/50 rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
                                 />
                                 <div className="flex gap-2 justify-end">
-                                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowCorrection(false)}>
+                                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={closeGuide}>
                                     Skip
                                   </Button>
                                   <Button size="sm" className="text-xs h-7" onClick={handleSubmitCorrection}>

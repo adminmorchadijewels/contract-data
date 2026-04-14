@@ -163,26 +163,27 @@ export async function generateSQLWithRAG(userQuery: string): Promise<RAGSQLResul
 export async function submitPositiveFeedback(question: string, sql: string): Promise<void> {
   try {
     const embedding = await embedText(question);
-    if (!embedding) return;
 
-    // Near-duplicate check: if a very similar question already exists (≥0.95), increment its count
-    const nearDupes = await searchSimilarExamples(embedding, 0.95, 1);
-    if (nearDupes.length > 0) {
-      await supabase
-        .from("approved_examples")
-        .update({
-          thumbs_up_count: nearDupes[0].thumbs_up_count + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", nearDupes[0].id);
-      return;
+    if (embedding) {
+      // Near-duplicate check only possible when we have an embedding
+      const nearDupes = await searchSimilarExamples(embedding, 0.95, 1);
+      if (nearDupes.length > 0) {
+        await supabase
+          .from("approved_examples")
+          .update({
+            thumbs_up_count: nearDupes[0].thumbs_up_count + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", nearDupes[0].id);
+        return;
+      }
     }
 
-    // New example — insert with embedding
+    // Insert new example — embedding is null when OpenAI unavailable (still saved for later)
     await supabase.from("approved_examples").insert({
       question,
       sql,
-      embedding,
+      ...(embedding && { embedding }),
       thumbs_up_count: 1,
     });
   } catch {
